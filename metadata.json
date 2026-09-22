@@ -1,0 +1,6 @@
+{
+  "name": "BetLegal - Verificação e Inteligência sobre Apostas",
+  "description": "Plataforma independente de verificação e inteligência sobre o mercado brasileiro de apostas. Consulte status regulatório, fontes oficiais, evidências e histórico.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
