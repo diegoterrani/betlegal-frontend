@@ -18,6 +18,7 @@ import { ChangesView } from './views/ChangesView';
 import { SeriesView } from './views/SeriesView';
 import { ReviewsView } from './views/ReviewsView';
 import { MethodologyView } from './views/MethodologyView';
+import { NoticiasView } from './views/NoticiasView';
 import { ContestView } from './views/ContestView';
 import { ApiDocsView } from './views/ApiDocsView';
 import { AdminPanelView } from './views/AdminPanelView';
@@ -144,6 +145,10 @@ export default function App() {
 
           {currentPath === '/series' && (
             <SeriesView />
+          )}
+
+          {currentPath === '/noticias' && (
+            <NoticiasView onNavigate={(path) => navigate(path)} />
           )}
 
           {currentPath === '/avaliacoes' && (
