@@ -135,7 +135,7 @@ export const RadarView: React.FC<RadarViewProps> = ({
           Descoberta Ativa & Inteligência Técnica
         </div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0B1F33] dark:text-white">
-          Radar de Domínios, Clones e Bloqueios
+          Não Autorizadas
         </h1>
         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">
           Monitoramento contínuo de domínios sem outorga, tentativas de clonagem de marcas autorizadas e ordens de bloqueio da Anatel.
