@@ -1,4 +1,4 @@
-import { BetEntity, RegulatoryChange, ContestationTicket } from '../types';
+import { BetEntity, RegulatoryChange, ContestationTicket, UserRole, UserSession } from '../types';
 
 export const INITIAL_ENTITIES: BetEntity[] = [
   {
@@ -850,6 +850,65 @@ export const INITIAL_TICKETS: ContestationTicket[] = [
   },
 ];
 
+export interface AuthorizationTrendPoint {
+  date: string;
+  displayDate: string;
+  authorized: number;
+  unauthorized: number;
+}
+
+export const DETECTION_BREAKDOWN = {
+  authorizedBySphere: { nacional: 183, estadual: 59, judicial: 6 },
+  unauthorizedTotal: 1020,
+  unauthorizedLiveness: { online: 898, offline: 92, offlineSinceAnnouncement: 44, unchecked: 30 },
+  today: { newlyDetected: 1, backOnline: 19 },
+};
+
+export const AUTHORIZATION_TREND_ANNOTATION = {
+  date: '2026-09-25',
+  displayDate: '25/09',
+  time: '18h',
+  label: 'Proibição',
+  description: '25/09 às 18h. Anúncio da proibição das bets regulamentadas.',
+};
+
+// Estoque diário desde 01/09/2026. Antes de 21/09/2026 não havia coleta de
+// não autorizadas (zero = ausência de coleta, não ausência de sites).
+export const AUTHORIZATION_TREND: AuthorizationTrendPoint[] = [
+  { date: '2026-09-01', displayDate: '01/09', authorized: 150, unauthorized: 0 },
+  { date: '2026-09-02', displayDate: '02/09', authorized: 150, unauthorized: 0 },
+  { date: '2026-09-03', displayDate: '03/09', authorized: 152, unauthorized: 0 },
+  { date: '2026-09-04', displayDate: '04/09', authorized: 152, unauthorized: 0 },
+  { date: '2026-09-05', displayDate: '05/09', authorized: 154, unauthorized: 0 },
+  { date: '2026-09-06', displayDate: '06/09', authorized: 154, unauthorized: 0 },
+  { date: '2026-09-07', displayDate: '07/09', authorized: 155, unauthorized: 0 },
+  { date: '2026-09-08', displayDate: '08/09', authorized: 156, unauthorized: 0 },
+  { date: '2026-09-09', displayDate: '09/09', authorized: 158, unauthorized: 0 },
+  { date: '2026-09-10', displayDate: '10/09', authorized: 160, unauthorized: 0 },
+  { date: '2026-09-11', displayDate: '11/09', authorized: 162, unauthorized: 0 },
+  { date: '2026-09-12', displayDate: '12/09', authorized: 164, unauthorized: 0 },
+  { date: '2026-09-13', displayDate: '13/09', authorized: 166, unauthorized: 0 },
+  { date: '2026-09-14', displayDate: '14/09', authorized: 168, unauthorized: 0 },
+  { date: '2026-09-15', displayDate: '15/09', authorized: 170, unauthorized: 0 },
+  { date: '2026-09-16', displayDate: '16/09', authorized: 172, unauthorized: 0 },
+  { date: '2026-09-17', displayDate: '17/09', authorized: 175, unauthorized: 0 },
+  { date: '2026-09-18', displayDate: '18/09', authorized: 178, unauthorized: 0 },
+  { date: '2026-09-19', displayDate: '19/09', authorized: 182, unauthorized: 0 },
+  { date: '2026-09-20', displayDate: '20/09', authorized: 186, unauthorized: 0 },
+  { date: '2026-09-21', displayDate: '21/09', authorized: 190, unauthorized: 142 },
+  { date: '2026-09-22', displayDate: '22/09', authorized: 214, unauthorized: 148 },
+  { date: '2026-09-23', displayDate: '23/09', authorized: 216, unauthorized: 151 },
+  { date: '2026-09-24', displayDate: '24/09', authorized: 218, unauthorized: 149 },
+  { date: '2026-09-25', displayDate: '25/09', authorized: 220, unauthorized: 163 },
+  { date: '2026-09-26', displayDate: '26/09', authorized: 224, unauthorized: 338 },
+  { date: '2026-09-27', displayDate: '27/09', authorized: 228, unauthorized: 512 },
+  { date: '2026-09-28', displayDate: '28/09', authorized: 232, unauthorized: 689 },
+  { date: '2026-09-29', displayDate: '29/09', authorized: 236, unauthorized: 844 },
+  { date: '2026-09-30', displayDate: '30/09', authorized: 240, unauthorized: 967 },
+  { date: '2026-10-01', displayDate: '01/10', authorized: 244, unauthorized: 1071 },
+  { date: '2026-10-02', displayDate: '02/10', authorized: 248, unauthorized: 1014 },
+];
+
 export const MARKET_SERIES_DATA = {
   totalAuthorizedNational: 114,
   totalAuthorizedEstadual: 28,
@@ -877,4 +936,307 @@ export const MARKET_SERIES_DATA = {
     { window: 'Janela 3', time: '18:00 BRT', target: 'Radar de clones, DNS liveness e certificados SSL', status: 'Agendado' },
     { window: 'Janela 4', time: '00:00 BRT', target: 'Consolidação de séries, diff temporal e backups', status: 'Agendado' },
   ],
+};
+
+// ---------------------------------------------------------------------------
+// Painel (super admin) e Área da Operadora — conteúdo adaptado do betlegal-prod
+// real (apps/frontend/src/components/views/AdminPanelView.tsx e
+// OperatorDeskView.tsx), sem backend: tudo abaixo é estático/mutado em memória.
+// ---------------------------------------------------------------------------
+
+export interface PipelineQueues {
+  descoberta: number;
+  verificacao: number;
+  classificacao: number;
+  confronto: number;
+  publicacao: number;
+  updatedAt: string;
+}
+
+export const PIPELINE_QUEUES: PipelineQueues = {
+  descoberta: 212,
+  verificacao: 64,
+  classificacao: 38,
+  confronto: 15,
+  publicacao: 6,
+  updatedAt: '02/10/2026 14:32 BRT',
+};
+
+export type HumanReviewGroup = 'baixa' | 'terceiro' | 'sonda' | 'betbr' | 'contestacao' | 'outra';
+
+export interface HumanReviewTask {
+  id: number;
+  host: string;
+  group: HumanReviewGroup;
+  groupLabel: string;
+  reason: string;
+  createdAt: string;
+  finalUrl: string | null;
+  title: string | null;
+  isBettingSite: boolean | null;
+  targetsBrazil: boolean | null;
+  confidence: number | null;
+  confidenceTargetsBrazil: number | null;
+  rationale: string | null;
+  signals: { ptBr: boolean; pix: boolean; keywords: number; lookalike: string | null };
+}
+
+export const HUMAN_REVIEW_QUEUE: HumanReviewTask[] = [
+  {
+    id: 1,
+    host: 'apostamaxbet.com',
+    group: 'baixa',
+    groupLabel: 'Confiança baixa',
+    reason: 'Modelo de classificação ficou abaixo de 80% de confiança.',
+    createdAt: '02/10/2026 09:14 BRT',
+    finalUrl: 'https://apostamaxbet.com',
+    title: 'ApostaMax Bet — Apostas esportivas e cassino ao vivo',
+    isBettingSite: true,
+    targetsBrazil: true,
+    confidence: 0.62,
+    confidenceTargetsBrazil: 0.88,
+    rationale: 'Página em português com Pix, mas sem número de portaria nem CNPJ visível — confiança de classificação abaixo do limiar de publicação automática.',
+    signals: { ptBr: true, pix: true, keywords: 14, lookalike: null },
+  },
+  {
+    id: 2,
+    host: 'comparabets.net',
+    group: 'terceiro',
+    groupLabel: 'Página de terceiro',
+    reason: 'Pode ser comparador/indicador, não a casa de apostas em si.',
+    createdAt: '02/10/2026 08:40 BRT',
+    finalUrl: 'https://comparabets.net',
+    title: 'ComparaBets — Compare odds e bônus',
+    isBettingSite: false,
+    targetsBrazil: true,
+    confidence: 0.71,
+    confidenceTargetsBrazil: 0.9,
+    rationale: 'Página lista links de afiliado para outras casas; não processa apostas nem cadastro diretamente.',
+    signals: { ptBr: true, pix: false, keywords: 9, lookalike: null },
+  },
+  {
+    id: 3,
+    host: 'betano-promocoes.com.br',
+    group: 'sonda',
+    groupLabel: 'Sonda do Brasil',
+    reason: 'A sonda de fora do Brasil não respondeu; aguardando a sonda de São Paulo.',
+    createdAt: '02/10/2026 07:55 BRT',
+    finalUrl: null,
+    title: null,
+    isBettingSite: null,
+    targetsBrazil: null,
+    confidence: null,
+    confidenceTargetsBrazil: null,
+    rationale: 'Possível bloqueio geográfico direcionado a sondas fora do Brasil. Sem confirmação ainda se bloqueia ou apenas está fora do ar.',
+    signals: { ptBr: false, pix: false, keywords: 0, lookalike: 'Betano' },
+  },
+  {
+    id: 4,
+    host: 'novasorte.bet.br',
+    group: 'betbr',
+    groupLabel: '.bet.br fora da lista',
+    reason: 'Domínio .bet.br que ainda não consta na última lista publicada pela SPA/MF.',
+    createdAt: '01/10/2026 22:10 BRT',
+    finalUrl: 'https://novasorte.bet.br',
+    title: 'Nova Sorte — Apostas de quota fixa',
+    isBettingSite: true,
+    targetsBrazil: true,
+    confidence: 0.84,
+    confidenceTargetsBrazil: 0.97,
+    rationale: 'Domínio na zona restrita .bet.br, mas o CNPJ do WHOIS não aparece na lista mais recente da SPA/MF — pode ser outorga recém-concedida ainda não propagada.',
+    signals: { ptBr: true, pix: true, keywords: 18, lookalike: null },
+  },
+  {
+    id: 5,
+    host: 'pixbet-oficial-vip.com',
+    group: 'contestacao',
+    groupLabel: 'Contestação',
+    reason: 'Operador autorizado contestou a classificação deste domínio como clone.',
+    createdAt: '01/10/2026 16:30 BRT',
+    finalUrl: 'https://pixbet-oficial-vip.com',
+    title: 'PixBet Oficial VIP',
+    isBettingSite: true,
+    targetsBrazil: true,
+    confidence: 0.91,
+    confidenceTargetsBrazil: 0.95,
+    rationale: 'Pixbet contestou pedindo reclassificação para bloqueio prioritário por uso indevido de marca registrada.',
+    signals: { ptBr: true, pix: true, keywords: 21, lookalike: 'Pixbet' },
+  },
+];
+
+export type AdminUserRole = UserRole;
+
+export interface AdminUserAccount {
+  id: number;
+  email: string;
+  role: AdminUserRole;
+}
+
+export interface MockAccount extends UserSession {
+  password: string;
+}
+
+/** As 3 contas de demonstração pedidas pelo usuário, para validar os painéis logados sem backend.
+ * Os e-mails coincidem de propósito com ADMIN_USERS e com o hold de OPERATOR_DESK, abaixo. */
+export const MOCK_ACCOUNTS: MockAccount[] = [
+  { name: 'Diego Terrani', email: 'diego.terrani@betlegal.com.br', role: 'super_admin', password: 'demo123' },
+  { name: 'Kaizen Gaming (Betano)', email: 'compliance@kaizengaming.com', role: 'operator', password: 'demo123' },
+  { name: 'Leitor Público', email: 'leitor.publico@gmail.com', role: 'client', password: 'demo123' },
+];
+
+export const ADMIN_USERS: AdminUserAccount[] = [
+  { id: 1, email: 'diego.terrani@betlegal.com.br', role: 'super_admin' },
+  { id: 2, email: 'auditoria@betlegal.com.br', role: 'admin' },
+  { id: 3, email: 'compliance@kaizengaming.com', role: 'operator' },
+  { id: 4, email: 'leitor.publico@gmail.com', role: 'client' },
+];
+
+export interface AdminHoldAccount {
+  id: number;
+  legalName: string;
+  cnpj: string;
+  email: string;
+  status: 'pending' | 'active';
+}
+
+export const ADMIN_HOLDS: AdminHoldAccount[] = [
+  { id: 1, legalName: 'Kaizen Gaming Brasil Ltda.', cnpj: '41.693.684/0001-44', email: 'compliance@kaizengaming.com', status: 'active' },
+  { id: 2, legalName: 'Superbet Brasil Tecnologia Ltda.', cnpj: '49.332.180/0001-80', email: 'juridico@superbet.com.br', status: 'active' },
+  { id: 3, legalName: 'Hillside (Brazil Gaming) Ltda.', cnpj: '48.910.123/0001-15', email: 'cadastro.br@bet365group.com', status: 'pending' },
+];
+
+export interface AdminReviewModeration {
+  id: number;
+  brand: string;
+  email: string;
+  comment: string | null;
+  hidden: boolean;
+}
+
+export const ADMIN_REVIEWS: AdminReviewModeration[] = [
+  { id: 1, brand: 'Betano', email: 'usuario1@gmail.com', comment: 'Saque caiu em menos de um dia, sem complicação.', hidden: false },
+  { id: 2, brand: 'Superbet', email: 'usuario2@gmail.com', comment: 'Suporte demorou a responder no chat.', hidden: false },
+  { id: 3, brand: 'Pixbet', email: 'usuario3@gmail.com', comment: 'Mensagem com link suspeito, provavelmente de um clone e não da casa.', hidden: true },
+];
+
+export interface CloneLinkRef {
+  cloneSlug: string;
+  officialSlug: string;
+  relation: 'redirect' | 'cnpj';
+  relationLabel: string;
+}
+
+/** Vínculo direto medido entre o domínio não autorizado e a casa regulamentada que ele imita. */
+export const CLONE_LINKS: CloneLinkRef[] = [
+  { cloneSlug: 'betano-app-bonus-xyz', officialSlug: 'betano', relation: 'cnpj', relationLabel: 'Cita o CNPJ da operadora' },
+  { cloneSlug: 'bet365-apostas-vip-online', officialSlug: 'bet365', relation: 'redirect', relationLabel: 'Redireciona para o domínio oficial' },
+];
+
+/** Avaliação de um usuário sobre uma marca, com nota em 5 eixos (igual ao RatingModal de prod) e resposta opcional da operadora. Fica num estado compartilhado (ver ReviewsContext) para que /avaliacoes (quem avalia) e /operadora (quem responde) leiam e escrevam no mesmo lugar. */
+export interface BrandReview {
+  id: number;
+  brandSlug: string;
+  brand: string;
+  authorEmail: string;
+  comment: string;
+  reply: string | null;
+  createdAt: string;
+  starsSafety: number;
+  starsPayout: number;
+  starsSupport: number;
+  starsSpeed: number;
+  starsResponsible: number;
+}
+
+export const INITIAL_BRAND_REVIEWS: BrandReview[] = [
+  {
+    id: 1,
+    brandSlug: 'betano',
+    brand: 'Betano',
+    authorEmail: 'leitor.publico@gmail.com',
+    comment: 'Saque caiu em menos de um dia, sem complicação.',
+    reply: null,
+    createdAt: '28/09/2026',
+    starsSafety: 5,
+    starsPayout: 5,
+    starsSupport: 4,
+    starsSpeed: 5,
+    starsResponsible: 4,
+  },
+  {
+    id: 2,
+    brandSlug: 'betano',
+    brand: 'Betano',
+    authorEmail: 'usuario2@gmail.com',
+    comment: 'Recebi mensagem de um "SAC Betano" por WhatsApp pedindo dados — acho que era golpe de clone.',
+    reply: 'Obrigado pelo alerta. A Betano não contata clientes por WhatsApp pedindo dados. Reportamos o número para o canal de denúncia.',
+    createdAt: '25/09/2026',
+    starsSafety: 3,
+    starsPayout: 5,
+    starsSupport: 5,
+    starsSpeed: 4,
+    starsResponsible: 5,
+  },
+  {
+    id: 3,
+    brandSlug: 'betano',
+    brand: 'Betano',
+    authorEmail: 'usuario3@gmail.com',
+    comment: 'App trava bastante no celular mais antigo, mas no navegador funciona bem.',
+    reply: null,
+    createdAt: '20/09/2026',
+    starsSafety: 5,
+    starsPayout: 4,
+    starsSupport: 3,
+    starsSpeed: 3,
+    starsResponsible: 4,
+  },
+  {
+    id: 4,
+    brandSlug: 'superbet',
+    brand: 'Superbet',
+    authorEmail: 'usuario4@gmail.com',
+    comment: 'Suporte demorou a responder no chat, mas resolveram no mesmo dia.',
+    reply: null,
+    createdAt: '22/09/2026',
+    starsSafety: 4,
+    starsPayout: 4,
+    starsSupport: 3,
+    starsSpeed: 3,
+    starsResponsible: 4,
+  },
+  {
+    id: 5,
+    brandSlug: 'bet365',
+    brand: 'Bet365',
+    authorEmail: 'usuario5@gmail.com',
+    comment: 'Site estável, nunca tive problema para sacar.',
+    reply: null,
+    createdAt: '18/09/2026',
+    starsSafety: 5,
+    starsPayout: 5,
+    starsSupport: 4,
+    starsSpeed: 4,
+    starsResponsible: 5,
+  },
+];
+
+export interface OperatorDeskData {
+  hold: { legalName: string; cnpj: string; domain: string; status: 'pending' | 'active'; linkedToSpa: boolean; spaCheckedAt: string | null };
+  houseSlugs: string[];
+  cloneSlugs: string[];
+}
+
+/** Sessão simulada de uma operadora logada (Kaizen Gaming / Betano), usada em /operadora. */
+export const OPERATOR_DESK: OperatorDeskData = {
+  hold: {
+    legalName: 'Kaizen Gaming Brasil Ltda.',
+    cnpj: '41.693.684/0001-44',
+    domain: 'betano.bet.br',
+    status: 'active',
+    linkedToSpa: true,
+    spaCheckedAt: '02/10/2026 12:00 BRT',
+  },
+  houseSlugs: ['betano'],
+  cloneSlugs: ['betano-app-bonus-xyz'],
 };

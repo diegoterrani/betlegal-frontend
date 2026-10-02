@@ -1,0 +1,47 @@
+import React from 'react';
+
+/** 25/09/2026, 18h, horário de Brasília: anúncio da proibição. */
+export const PROHIBITION_DAY = '2026-09-25';
+export const PROHIBITION_HOUR = 18;
+
+export const PROHIBITION_CAPTION =
+  '25/09/2026 às 18h, horário de Brasília: anúncio da proibição das bets regulamentadas pelo governo brasileiro.';
+
+export function prohibitionLabelSide(x: number, plotLeft: number, plotRight: number): 'left' | 'right' {
+  return x > (plotLeft + plotRight) / 2 ? 'left' : 'right';
+}
+
+export const ProhibitionMark: React.FC<{
+  x: number;
+  y: number;
+  baseline: number;
+  side: 'left' | 'right';
+}> = ({ x, y, baseline, side }) => {
+  const labelX = side === 'left' ? x - 14 : x + 14;
+  return (
+    <g className="prohibition-mark" pointerEvents="none">
+      <line
+        x1={x}
+        y1={y + 8}
+        x2={x}
+        y2={baseline}
+        stroke="var(--danger)"
+        strokeWidth="1.25"
+        strokeDasharray="3 3"
+      />
+      <circle className="prohibition-pulse" cx={x} cy={y} r="11" fill="var(--danger)" />
+      <circle cx={x} cy={y} r="5.5" fill="var(--danger)" stroke="var(--card)" strokeWidth="2" />
+      <text
+        x={labelX}
+        y={y + 4}
+        textAnchor={side === 'left' ? 'end' : 'start'}
+        fontSize="12"
+        fontWeight="700"
+        fill="var(--danger)"
+      >
+        18h · Proibição
+      </text>
+      <title>{PROHIBITION_CAPTION}</title>
+    </g>
+  );
+};

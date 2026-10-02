@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 74 70" width="148" height="140" role="img" aria-label="Bet Legal"><g transform="translate(2,4)"><g fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <line x1="30" y1="4" x2="30" y2="62" stroke="#f87171" stroke-width="2.5" stroke-dasharray="3 4"/>
+  <path d="M4 16 L18 16 L36 46 L56 52" stroke="#fafafa" stroke-width="5.5"/>
+  <path d="M4 54 L18 52 L36 24 L48 17" stroke="#f59e0b" stroke-width="5.5"/>
+  <circle cx="60" cy="11" r="9" stroke="#f87171" stroke-width="3.5"/>
+  <line x1="53.6" y1="4.6" x2="66.4" y2="17.4" stroke="#f87171" stroke-width="3.5"/>
+</g></g></svg>

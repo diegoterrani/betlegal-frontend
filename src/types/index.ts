@@ -105,3 +105,11 @@ export interface ContestationTicket {
   createdAt: string;
   status: 'recebido' | 'em_analise' | 'concluido';
 }
+
+export type UserRole = 'client' | 'operator' | 'admin' | 'super_admin';
+
+export interface UserSession {
+  name: string;
+  email: string;
+  role: UserRole;
+}

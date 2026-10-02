@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { BetEntity, RegulatoryChange } from './types';
 import { INITIAL_ENTITIES, REGULATORY_CHANGES } from './data/mockData';
 import { ThemeProvider } from './context/ThemeContext';
+import { UserProvider } from './context/UserContext';
+import { ReviewsProvider } from './context/ReviewsContext';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { ShareModal } from './components/ShareModal';
@@ -21,6 +23,25 @@ import { MethodologyView } from './views/MethodologyView';
 import { ContestView } from './views/ContestView';
 import { ApiDocsView } from './views/ApiDocsView';
 import { AdminPanelView } from './views/AdminPanelView';
+import { OperatorDeskView } from './views/OperatorDeskView';
+import { NewsView } from './views/NewsView';
+import { LoginView } from './views/LoginView';
+import { RegisterView } from './views/RegisterView';
+import { AboutView } from './views/AboutView';
+import { SourcesView } from './views/SourcesView';
+import { PrivacyView } from './views/PrivacyView';
+import { ProfileView } from './views/ProfileView';
+import { NotFoundView } from './views/NotFoundView';
+
+const KNOWN_PATHS = [
+  '/', '/busca', '/autorizadas', '/radar', '/mudancas', '/series', '/avaliacoes',
+  '/metodologia', '/sobre', '/fontes', '/privacidade', '/contestar', '/api',
+  '/painel', '/operadora', '/noticias', '/entrar', '/criar-conta', '/perfil',
+];
+
+function isKnownPath(path: string): boolean {
+  return KNOWN_PATHS.includes(path) || path.startsWith('/dominio/');
+}
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState<string>('/');
@@ -66,9 +87,14 @@ export default function App() {
   };
 
   return (
+    <UserProvider>
+    <ReviewsProvider>
     <ThemeProvider>
-      <div className="min-h-screen flex flex-col bg-[#F6F8FB] dark:bg-[#081320] text-[#0B1F33] dark:text-slate-100 selection:bg-[#1F5FD1]/20 selection:text-[#0B1F33] transition-colors">
-        
+      <div
+        className="min-h-screen flex flex-col transition-colors"
+        style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+      >
+
         {/* Top Bar Header */}
         <Header
           currentPath={currentPath}
@@ -150,11 +176,24 @@ export default function App() {
             <ReviewsView
               entities={entities}
               onViewDetails={handleViewDomainDetail}
+              onNavigate={(path) => navigate(path)}
             />
           )}
 
           {currentPath === '/metodologia' && (
-            <MethodologyView />
+            <MethodologyView onNavigate={(path) => navigate(path)} />
+          )}
+
+          {currentPath === '/sobre' && (
+            <AboutView onNavigate={(path) => navigate(path)} />
+          )}
+
+          {currentPath === '/fontes' && (
+            <SourcesView />
+          )}
+
+          {currentPath === '/privacidade' && (
+            <PrivacyView />
           )}
 
           {currentPath === '/contestar' && (
@@ -166,7 +205,31 @@ export default function App() {
           )}
 
           {currentPath === '/painel' && (
-            <AdminPanelView entities={entities} />
+            <AdminPanelView entities={entities} onNavigate={(path) => navigate(path)} />
+          )}
+
+          {currentPath === '/operadora' && (
+            <OperatorDeskView entities={entities} onNavigate={(path) => navigate(path)} />
+          )}
+
+          {currentPath === '/noticias' && (
+            <NewsView />
+          )}
+
+          {currentPath === '/entrar' && (
+            <LoginView onNavigate={(path) => navigate(path)} />
+          )}
+
+          {currentPath === '/criar-conta' && (
+            <RegisterView onNavigate={(path) => navigate(path)} />
+          )}
+
+          {currentPath === '/perfil' && (
+            <ProfileView onNavigate={(path) => navigate(path)} />
+          )}
+
+          {!isKnownPath(currentPath) && (
+            <NotFoundView onNavigate={(path) => navigate(path)} />
           )}
         </main>
 
@@ -203,5 +266,7 @@ export default function App() {
 
       </div>
     </ThemeProvider>
+    </ReviewsProvider>
+    </UserProvider>
   );
 }

@@ -1,23 +1,20 @@
 import React, { useState } from 'react';
 import { BetEntity, RegulatoryChange } from '../types';
 import { BetLegalCard } from '../components/BetLegalCard';
-import { 
-  Search, 
-  ArrowRight, 
-  ShieldCheck, 
-  Activity, 
-  Database, 
-  ExternalLink, 
-  CheckCircle, 
-  AlertTriangle,
+import { GlassCard } from '../components/ui/GlassCard';
+import { AmbientGlow } from '../components/ui/AmbientGlow';
+import { AuthorizationTrendChart } from '../components/AuthorizationTrendChart';
+import { DetectionBreakdownCards } from '../components/DetectionBreakdownCards';
+import { MarketGrowthChart } from '../components/MarketGrowthChart';
+import { BetLegalLogo } from '../components/brand/BetLegalBrand';
+import { useTheme } from '../context/ThemeContext';
+import {
+  Search,
+  ArrowRight,
   History,
-  Terminal,
-  FileCheck2,
-  Lock,
-  Layers,
-  Sparkles
+  AlertTriangle,
 } from 'lucide-react';
-import { MARKET_SERIES_DATA } from '../data/mockData';
+import { AUTHORIZATION_TREND, AUTHORIZATION_TREND_ANNOTATION } from '../data/mockData';
 
 interface HomeViewProps {
   entities: BetEntity[];
@@ -41,6 +38,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onViewDetails,
 }) => {
   const [searchInput, setSearchInput] = useState('');
+  const { resolvedTheme } = useTheme();
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,175 +47,153 @@ export const HomeView: React.FC<HomeViewProps> = ({
     }
   };
 
-  const sampleQueries = [
-    { label: 'Betano', query: 'betano' },
-    { label: 'Bet365', query: 'bet365' },
-    { label: 'Superbet', query: 'superbet' },
-    { label: 'Pixbet (Loterj)', query: 'pixbet' },
-    { label: 'CNPJ 41.693.684...', query: '41.693.684/0001-44' },
-    { label: 'betano-app-bonus.xyz (Clone)', query: 'betano-app-bonus.xyz' },
-  ];
-
-  // Featured entities for home showcase
   const featuredEntities = entities.slice(0, 3);
   const recentChanges = changes.slice(0, 4);
 
   return (
-    <div className="space-y-16 py-6 sm:py-10">
-      
-      {/* 1. HERO RECOMENDADO (Page 15 Brand Book) */}
+    <div className="relative space-y-16 py-6 sm:py-10">
+      <AmbientGlow />
+
+      {/* 1. HERO */}
       <section className="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-6 pt-4 sm:pt-8">
-        
-        {/* Brand line principal */}
-        <div className="inline-block">
-          <span className="text-xs sm:text-sm font-bold tracking-widest text-[#1F5FD1] dark:text-sky-400 uppercase">
-            Plataforma Independente de Verificação
-          </span>
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[#0B1F33] dark:text-white mt-2">
-            BET LEGAL? <span className="text-[#1F5FD1] dark:text-[#3B82F6]">CONFERE.</span>
-          </h1>
-        </div>
+        <h1>
+          <BetLegalLogo theme={resolvedTheme} variant="full" className="h-16 sm:h-20 w-auto mx-auto" />
+        </h1>
 
-        {/* Subtitle */}
-        <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
-          Pesquise uma casa de apostas pelo nome, domínio ou CNPJ e veja status regulatório, fonte oficial, evidências e histórico.
-        </p>
-
-        {/* Unified Search Input Box */}
         <form onSubmit={handleFormSubmit} className="max-w-2xl mx-auto mt-4">
-          <div className="flex flex-col sm:flex-row items-center gap-2 p-1.5 bg-white dark:bg-[#0D1B2A] border-2 border-slate-300 dark:border-slate-700 focus-within:border-[#1F5FD1] dark:focus-within:border-sky-400 rounded-lg shadow-sm transition-all">
+          <div className="glass-card flex flex-col sm:flex-row items-center gap-2 p-1.5 rounded-lg transition-all">
             <div className="flex items-center gap-2 px-3 w-full sm:flex-1 py-1 sm:py-0">
-              <Search className="w-5 h-5 text-slate-400 dark:text-slate-500 shrink-0" />
+              <Search className="w-5 h-5 shrink-0" style={{ color: 'var(--color-text-tertiary)' }} />
               <input
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Ex: betano.bet.br, Superbet, ou 41.693.684/0001-44"
-                className="w-full text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm sm:text-base focus:outline-none bg-transparent"
+                className="w-full text-sm sm:text-base focus:outline-none bg-transparent"
+                style={{ color: 'var(--color-text-primary)' }}
                 aria-label="Pesquise por nome, domínio ou CNPJ"
               />
             </div>
             <button
               type="submit"
-              className="w-full sm:w-auto px-6 py-3 bg-[#1F5FD1] hover:bg-[#184ebd] active:bg-[#143e99] dark:bg-[#1F5FD1] dark:hover:bg-[#2a6ced] text-white font-bold text-sm tracking-wide rounded-md transition-colors cursor-pointer shrink-0 shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1F5FD1]"
+              className="w-full sm:w-auto px-6 py-3 font-semibold text-sm tracking-wide rounded-md transition-colors cursor-pointer shrink-0"
+              style={{ backgroundColor: 'var(--status-dado-declarado)', color: 'var(--color-bg)' }}
             >
               CONFERIR
             </button>
           </div>
         </form>
 
-        {/* Linha de Confiança Obrigatória (Page 15) */}
-        <div className="text-xs text-slate-600 dark:text-slate-400 font-medium flex items-center justify-center flex-wrap gap-2 pt-1">
+        <div className="text-xs font-medium flex items-center justify-center flex-wrap gap-2 pt-1" style={{ color: 'var(--color-text-tertiary)' }}>
           <span>Fontes públicas</span>
-          <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
+          <span aria-hidden="true">·</span>
           <span>Atualização recorrente</span>
-          <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
-          <span className="text-emerald-700 dark:text-emerald-400 font-semibold">Sem afiliados</span>
-          <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
-          <span className="text-emerald-700 dark:text-emerald-400 font-semibold">Sem bônus</span>
+          <span aria-hidden="true">·</span>
+          <span className="font-semibold" style={{ color: 'var(--status-autorizada)' }}>Sem afiliados</span>
+          <span aria-hidden="true">·</span>
+          <span className="font-semibold" style={{ color: 'var(--status-autorizada)' }}>Sem bônus</span>
         </div>
 
-        {/* Exemplos de busca rápida */}
-        <div className="flex items-center justify-center flex-wrap gap-1.5 pt-2 text-xs text-slate-500 dark:text-slate-400">
-          <span className="font-medium mr-1 text-slate-600 dark:text-slate-300">Consultas frequentes:</span>
-          {sampleQueries.map((item) => (
-            <button
-              key={item.label}
-              onClick={() => {
-                setSearchInput(item.query);
-                onSearchSubmit(item.query);
-              }}
-              className="px-2.5 py-1 bg-white dark:bg-[#0D1B2A] hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded text-xs transition-colors cursor-pointer"
-            >
-              {item.label}
-            </button>
-          ))}
+      </section>
+
+      {/* 2. EVOLUÇÃO */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="text-[11px] font-mono font-medium uppercase tracking-[0.2em]" style={{ color: 'var(--color-text-tertiary)' }}>
+              Evolução
+            </div>
+            <h2 className="text-xl sm:text-2xl font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+              Panorama do mercado regulado
+            </h2>
+          </div>
+          <button
+            onClick={() => onNavigate('/series')}
+            className="text-xs font-semibold hover:underline flex items-center gap-1 cursor-pointer shrink-0"
+            style={{ color: 'var(--status-dado-declarado)' }}
+          >
+            Série histórica detalhada
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <DetectionBreakdownCards />
+
+        <div className="mt-5">
+          <AuthorizationTrendChart data={AUTHORIZATION_TREND} annotation={AUTHORIZATION_TREND_ANNOTATION} />
+        </div>
+
+        <div className="mt-4">
+          <MarketGrowthChart />
         </div>
       </section>
 
-      {/* 2. COMO FUNCIONA (Page 15: Consultar → Cruzar → Mostrar) */}
+      {/* 3. METODOLOGIA TRANSPARENTE */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="bg-white dark:bg-[#0D1B2A] border border-slate-200 dark:border-slate-800 rounded-lg p-6 sm:p-8 transition-colors">
-          <div className="text-xs font-bold uppercase tracking-wider text-[#1F5FD1] dark:text-sky-400 mb-1">
+        <GlassCard className="p-6 sm:p-8">
+          <div className="text-[11px] font-mono font-medium uppercase tracking-[0.2em] mb-1" style={{ color: 'var(--status-dado-declarado)' }}>
             Metodologia Transparente
           </div>
-          <h2 className="text-2xl font-bold text-[#0B1F33] dark:text-white mb-6">
+          <h2 className="text-2xl font-semibold mb-6" style={{ color: 'var(--color-text-primary)' }}>
             Como funciona a checagem no BetLegal
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
-            
-            {/* Passo 1 */}
-            <div className="space-y-2 p-4 bg-[#F6F8FB] dark:bg-[#081320] rounded border border-slate-100 dark:border-slate-800/80">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm font-bold text-[#1F5FD1] dark:text-sky-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded">
-                  01
-                </span>
-                <h3 className="font-bold text-slate-900 dark:text-white text-base">Consultar</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { n: '01', title: 'Consultar', desc: 'Varredura contínua nas 4 janelas diárias de fontes primárias: Diário Oficial da União, SIGAP/SPA, despachos de autorização e loterias estaduais.' },
+              { n: '02', title: 'Cruzar', desc: 'Validação cadastral de CNPJ na Receita Federal, verificação de zona .bet.br no Registro.br, testes de conectividade técnica (liveness) e histórico.' },
+              { n: '03', title: 'Mostrar', desc: 'Apresentação no formato do BetLegal Card: status factual, nome do órgão, data/hora da sonda e link direto para a fonte oficial.' },
+            ].map((step) => (
+              <div key={step.n} className="space-y-2 p-4 rounded border" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'var(--color-card-border)' }}>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="font-mono text-sm font-semibold px-2 py-0.5 rounded border"
+                    style={{ color: 'var(--status-dado-declarado)', borderColor: 'var(--status-dado-declarado)', backgroundColor: 'color-mix(in srgb, var(--status-dado-declarado) 10%, transparent)' }}
+                  >
+                    {step.n}
+                  </span>
+                  <h3 className="font-semibold text-base" style={{ color: 'var(--color-text-primary)' }}>{step.title}</h3>
+                </div>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{step.desc}</p>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                Varredura contínua nas 4 janelas diárias de fontes primárias: Diário Oficial da União, SIGAP/SPA, despachos de autorização e loterias estaduais.
-              </p>
-            </div>
-
-            {/* Passo 2 */}
-            <div className="space-y-2 p-4 bg-[#F6F8FB] dark:bg-[#081320] rounded border border-slate-100 dark:border-slate-800/80">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm font-bold text-[#1F5FD1] dark:text-sky-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded">
-                  02
-                </span>
-                <h3 className="font-bold text-slate-900 dark:text-white text-base">Cruzar</h3>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                Validação cadastral de CNPJ na Receita Federal, verificação de zona .bet.br no Registro.br, testes de conectividade técnica (liveness) e histórico.
-              </p>
-            </div>
-
-            {/* Passo 3 */}
-            <div className="space-y-2 p-4 bg-[#F6F8FB] dark:bg-[#081320] rounded border border-slate-100 dark:border-slate-800/80">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm font-bold text-[#1F5FD1] dark:text-sky-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded">
-                  03
-                </span>
-                <h3 className="font-bold text-slate-900 dark:text-white text-base">Mostrar</h3>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                Apresentação no formato do <strong>BetLegal Card</strong>: status factual, nome do órgão, data/hora da sonda e link direto para a fonte oficial.
-              </p>
-            </div>
+            ))}
           </div>
 
-          {/* Principle quote from Page 3 */}
-          <div className="mt-6 p-3.5 bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/60 rounded text-xs text-blue-900 dark:text-blue-200 flex items-center justify-between flex-wrap gap-2">
+          <div
+            className="mt-6 p-3.5 rounded text-xs flex items-center justify-between flex-wrap gap-2 border"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--status-dado-declarado) 8%, transparent)', borderColor: 'color-mix(in srgb, var(--status-dado-declarado) 25%, transparent)', color: 'var(--color-text-secondary)' }}
+          >
             <div>
-              <strong className="font-semibold">Princípio de precisão editorial: </strong>
-              <em>“Legal é a pergunta. Evidência é a resposta.”</em> Mostramos o que consta — ou não consta — nas fontes oficiais.
+              <strong className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>Princípio de precisão editorial: </strong>
+              <em>"Legal é a pergunta. Evidência é a resposta."</em> Mostramos o que consta — ou não consta — nas fontes oficiais.
             </div>
             <button
               onClick={() => onNavigate('/metodologia')}
-              className="text-[#1F5FD1] dark:text-sky-400 hover:underline font-semibold text-xs inline-flex items-center gap-1 cursor-pointer"
+              className="font-semibold text-xs inline-flex items-center gap-1 cursor-pointer hover:underline"
+              style={{ color: 'var(--status-dado-declarado)' }}
             >
               Ver metodologia completa
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
-        </div>
+        </GlassCard>
       </section>
 
-      {/* 3. VERIFICAÇÕES EM DESTAQUE (BetLegal Card showcase) */}
+      {/* 4. VERIFICAÇÕES EM DESTAQUE */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-[#0B1F33] dark:text-white">
+            <h2 className="text-xl sm:text-2xl font-semibold" style={{ color: 'var(--color-text-primary)' }}>
               Consultas e Verificações Recentes
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
               Fichas de evidência atualizadas na janela operacional de hoje
             </p>
           </div>
           <button
             onClick={() => onNavigate('/busca')}
-            className="text-xs font-semibold text-[#1F5FD1] dark:text-sky-400 hover:underline flex items-center gap-1 cursor-pointer"
+            className="text-xs font-semibold hover:underline flex items-center gap-1 cursor-pointer shrink-0"
+            style={{ color: 'var(--status-dado-declarado)' }}
           >
             Ver todas as casas
             <ArrowRight className="w-3.5 h-3.5" />
@@ -238,22 +214,21 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </section>
 
-      {/* 4. ÚLTIMAS MUDANÇAS & RADAR DE CLONES (Page 15) */}
+      {/* 5. ÚLTIMAS MUDANÇAS & RADAR */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Coluna 1: Últimas Mudanças Regulatórias */}
-        <div className="bg-white dark:bg-[#0D1B2A] border border-slate-200 dark:border-slate-800 rounded-lg p-5 sm:p-6 space-y-4 transition-colors">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <GlassCard className="p-5 sm:p-6 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: 'var(--color-card-border)' }}>
             <div>
-              <h3 className="font-bold text-[#0B1F33] dark:text-white text-base flex items-center gap-2">
-                <History className="w-4 h-4 text-[#1F5FD1] dark:text-sky-400" />
+              <h3 className="font-semibold text-base flex items-center gap-2" style={{ color: 'var(--color-text-primary)' }}>
+                <History className="w-4 h-4" style={{ color: 'var(--status-dado-declarado)' }} />
                 Últimas Mudanças Regulatórias
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Eventos e diff temporal das listas oficiais</p>
+              <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Eventos e diff temporal das listas oficiais</p>
             </div>
             <button
               onClick={() => onNavigate('/mudancas')}
-              className="text-xs font-semibold text-[#1F5FD1] dark:text-sky-400 hover:underline cursor-pointer"
+              className="text-xs font-semibold hover:underline cursor-pointer shrink-0"
+              style={{ color: 'var(--status-dado-declarado)' }}
             >
               Ver diffs
             </button>
@@ -261,64 +236,71 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           <div className="space-y-3">
             {recentChanges.map((chg) => (
-              <div key={chg.id} className="p-3 bg-[#F6F8FB] dark:bg-[#081320] border border-slate-100 dark:border-slate-800 rounded text-xs space-y-1">
-                <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{chg.brandName}</span>
+              <div key={chg.id} className="p-3 rounded border text-xs space-y-1" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'var(--color-card-border)' }}>
+                <div className="flex items-center justify-between text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
+                  <span className="font-semibold" style={{ color: 'var(--color-text-secondary)' }}>{chg.brandName}</span>
                   <span className="font-mono">{chg.date} {chg.time}</span>
                 </div>
-                <p className="text-slate-700 dark:text-slate-300 leading-snug">{chg.summary}</p>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
-                  Fonte: <span className="text-slate-700 dark:text-slate-200 font-medium">{chg.sourceDoc}</span>
+                <p className="leading-snug" style={{ color: 'var(--color-text-secondary)' }}>{chg.summary}</p>
+                <div className="text-[11px] pt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>
+                  Fonte: <span className="font-medium" style={{ color: 'var(--color-text-secondary)' }}>{chg.sourceDoc}</span>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </GlassCard>
 
-        {/* Coluna 2: Radar & Descoberta Ativa */}
-        <div className="bg-white dark:bg-[#0D1B2A] border border-slate-200 dark:border-slate-800 rounded-lg p-5 sm:p-6 space-y-4 transition-colors">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <GlassCard className="p-5 sm:p-6 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: 'var(--color-card-border)' }}>
             <div>
-              <h3 className="font-bold text-[#0B1F33] dark:text-white text-base flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <h3 className="font-semibold text-base flex items-center gap-2" style={{ color: 'var(--color-text-primary)' }}>
+                <AlertTriangle className="w-4 h-4" style={{ color: 'var(--status-atencao)' }} />
                 Radar de Clones e Bloqueios
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Sinais técnicos observados e lista Anatel</p>
+              <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Sinais técnicos observados e lista Anatel</p>
             </div>
             <button
               onClick={() => onNavigate('/radar')}
-              className="text-xs font-semibold text-[#1F5FD1] dark:text-sky-400 hover:underline cursor-pointer"
+              className="text-xs font-semibold hover:underline cursor-pointer shrink-0"
+              style={{ color: 'var(--status-dado-declarado)' }}
             >
               Abrir Radar
             </button>
           </div>
 
           <div className="space-y-3">
-            {/* Card clone warning example */}
-            <div className="p-3 bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 rounded text-xs space-y-1.5">
+            <div
+              className="p-3 rounded text-xs space-y-1.5 border"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--status-nao-autorizada) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--status-nao-autorizada) 30%, transparent)' }}
+            >
               <div className="flex items-center justify-between">
-                <span className="font-mono font-bold text-rose-900 dark:text-rose-300">betano-app-bonus.xyz</span>
-                <span className="text-[10px] uppercase font-bold text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-900/50 px-2 py-0.5 rounded">
+                <span className="font-mono font-bold" style={{ color: 'var(--status-nao-autorizada)' }}>betano-app-bonus.xyz</span>
+                <span
+                  className="text-[10px] uppercase font-bold px-2 py-0.5 rounded"
+                  style={{ color: 'var(--status-nao-autorizada)', backgroundColor: 'color-mix(in srgb, var(--status-nao-autorizada) 15%, transparent)' }}
+                >
                   Lookalike Detectado
                 </span>
               </div>
-              <p className="text-rose-800 dark:text-rose-300 text-[11px] leading-relaxed">
+              <p className="text-[11px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
                 Domínio registrado no exterior sem autorização SPA/MF. Utiliza logo da Betano para oferta ilegítima de bônus via link patrocinado.
               </p>
-              <div className="text-[11px] text-rose-700 dark:text-rose-400 font-mono">
-                Host legítimo da marca: <strong className="font-bold">betano.bet.br</strong>
+              <div className="text-[11px] font-mono" style={{ color: 'var(--color-text-tertiary)' }}>
+                Host legítimo da marca: <strong>betano.bet.br</strong>
               </div>
             </div>
 
-            {/* Blocked sample */}
-            <div className="p-3 bg-slate-50 dark:bg-[#081320] border border-slate-200 dark:border-slate-800 rounded text-xs space-y-1.5">
+            <div className="p-3 rounded border text-xs space-y-1.5" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'var(--color-card-border)' }}>
               <div className="flex items-center justify-between">
-                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">bet365-apostas-vip.online</span>
-                <span className="text-[10px] uppercase font-bold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/60 px-1.5 py-0.5 rounded">
+                <span className="font-mono font-bold" style={{ color: 'var(--color-text-secondary)' }}>bet365-apostas-vip.online</span>
+                <span
+                  className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border"
+                  style={{ color: 'var(--status-bloqueada)', borderColor: 'var(--status-bloqueada)' }}
+                >
                   Bloqueio Anatel
                 </span>
               </div>
-              <p className="text-slate-600 dark:text-slate-300 text-[11px]">
+              <p className="text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
                 Constou na lista formal de bloqueio enviada à Anatel. Redirecionamento DNS para página de advertência pelos provedores.
               </p>
             </div>
@@ -326,102 +308,47 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <div className="pt-2 text-center">
               <button
                 onClick={() => onNavigate('/radar')}
-                className="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded font-semibold text-xs transition-colors cursor-pointer"
+                className="w-full py-2 rounded font-semibold text-xs transition-colors cursor-pointer hover:bg-white/10"
+                style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--color-text-secondary)' }}
               >
                 Consultar ferramenta comparadora de clones no Radar →
               </button>
             </div>
           </div>
-        </div>
-
+        </GlassCard>
       </section>
 
-      {/* 5. DADOS DO MERCADO (Page 15: Séries & Estatísticas) */}
+      {/* 6. API E INTEGRAÇÃO B2B */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="bg-white dark:bg-[#0D1B2A] border border-slate-200 dark:border-slate-800 rounded-lg p-6 sm:p-8 space-y-6 transition-colors">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-4 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-[#0B7A75] dark:text-teal-400 mb-0.5">
-                Inteligência e Dados Abertos
-              </div>
-              <h2 className="text-2xl font-bold text-[#0B1F33] dark:text-white">
-                Panorama do Mercado Regulado no Brasil
-              </h2>
-            </div>
-            <button
-              onClick={() => onNavigate('/series')}
-              className="text-xs font-semibold text-[#1F5FD1] dark:text-sky-400 hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              Acessar série histórica detalhada
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="p-4 bg-[#F6F8FB] dark:bg-[#081320] border border-slate-100 dark:border-slate-800 rounded">
-              <span className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Autorizadas Nacional (SPA)</span>
-              <span className="font-mono text-2xl sm:text-3xl font-bold text-[#0B1F33] dark:text-white tabular-nums">
-                {MARKET_SERIES_DATA.totalAuthorizedNational}
-              </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-1">outorgas federais</span>
-            </div>
-
-            <div className="p-4 bg-[#F6F8FB] dark:bg-[#081320] border border-slate-100 dark:border-slate-800 rounded">
-              <span className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Autorizadas Estaduais</span>
-              <span className="font-mono text-2xl sm:text-3xl font-bold text-[#0B1F33] dark:text-white tabular-nums">
-                {MARKET_SERIES_DATA.totalAuthorizedEstadual}
-              </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-1">Loterj, Lotepar, Lemg</span>
-            </div>
-
-            <div className="p-4 bg-[#F6F8FB] dark:bg-[#081320] border border-slate-100 dark:border-slate-800 rounded">
-              <span className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Domínios Bloqueados</span>
-              <span className="font-mono text-2xl sm:text-3xl font-bold text-red-700 dark:text-red-400 tabular-nums">
-                {MARKET_SERIES_DATA.totalBlockedAnatel}
-              </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-1">listas Anatel / MF</span>
-            </div>
-
-            <div className="p-4 bg-[#F6F8FB] dark:bg-[#081320] border border-slate-100 dark:border-slate-800 rounded">
-              <span className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Domínios Monitorados</span>
-              <span className="font-mono text-2xl sm:text-3xl font-bold text-[#1F5FD1] dark:text-sky-400 tabular-nums">
-                {MARKET_SERIES_DATA.totalVerifiedDomains}
-              </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-1">sondas técnicas ativas</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 6. API E INTEGRAÇÃO B2B (Page 15) */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="bg-[#0B1F33] dark:bg-[#050E17] text-white rounded-lg p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 border border-transparent dark:border-slate-800 transition-colors">
+        <GlassCard className="p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="space-y-2 max-w-xl">
-            <div className="text-xs font-bold text-[#1F5FD1] dark:text-sky-400 uppercase tracking-wider">
+            <div className="text-xs font-mono font-medium uppercase tracking-[0.2em]" style={{ color: 'var(--status-dado-declarado)' }}>
               Para Jornalistas, Pesquisadores & Compliance
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white">
+            <h2 className="text-xl sm:text-2xl font-semibold" style={{ color: 'var(--color-text-primary)' }}>
               API Pública BetLegal: Dados Estruturados em Tempo Real
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
               Consulte endpoints REST padronizados para integrar verificações de domínio, CNPJ, listas de bloqueio da Anatel e histórico de alterações em sistemas de antifraude e redações.
             </p>
           </div>
           <div className="shrink-0 flex flex-col sm:flex-row gap-3">
             <button
               onClick={() => onNavigate('/api')}
-              className="px-5 py-2.5 bg-[#1F5FD1] hover:bg-[#184ebd] text-white text-xs sm:text-sm font-semibold rounded transition-colors cursor-pointer"
+              className="px-5 py-2.5 text-xs sm:text-sm font-semibold rounded transition-colors cursor-pointer"
+              style={{ backgroundColor: 'var(--status-dado-declarado)', color: 'var(--color-bg)' }}
             >
               Explorar Documentação da API
             </button>
             <button
               onClick={() => onNavigate('/contestar')}
-              className="px-5 py-2.5 bg-white/10 hover:bg-white/15 text-white text-xs sm:text-sm font-semibold rounded border border-white/20 transition-colors cursor-pointer"
+              className="px-5 py-2.5 text-xs sm:text-sm font-semibold rounded border transition-colors cursor-pointer hover:bg-white/5"
+              style={{ borderColor: 'var(--color-card-border)', color: 'var(--color-text-secondary)' }}
             >
               Canal de Contestação
             </button>
           </div>
-        </div>
+        </GlassCard>
       </section>
 
     </div>
