@@ -17,7 +17,8 @@ import {
   Layers,
   Sparkles
 } from 'lucide-react';
-import { MARKET_SERIES_DATA } from '../data/mockData';
+import { MARKET_SERIES_DATA, AUTHORIZATION_TREND, AUTHORIZATION_TREND_ANNOTATION } from '../data/mockData';
+import { AuthorizationTrendChart } from '../components/AuthorizationTrendChart';
 
 interface HomeViewProps {
   entities: BetEntity[];
@@ -134,6 +135,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
           ))}
         </div>
       </section>
+
+      {/* 1.5 GRÁFICO PRINCIPAL: AUTORIZADAS X NÃO AUTORIZADAS */}
+      <AuthorizationTrendChart
+        data={AUTHORIZATION_TREND}
+        annotation={AUTHORIZATION_TREND_ANNOTATION}
+        onNavigate={onNavigate}
+      />
 
       {/* 2. COMO FUNCIONA (Page 15: Consultar → Cruzar → Mostrar) */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6">

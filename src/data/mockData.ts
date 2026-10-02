@@ -850,6 +850,58 @@ export const INITIAL_TICKETS: ContestationTicket[] = [
   },
 ];
 
+export interface AuthorizationTrendPoint {
+  date: string;
+  displayDate: string;
+  authorized: number;
+  unauthorized: number;
+}
+
+export const AUTHORIZATION_TREND_ANNOTATION = {
+  date: '2026-09-25',
+  displayDate: '25/09',
+  time: '18h',
+  label: 'Proibição',
+  description: '25/09 às 18h. Anúncio da proibição das bets regulamentadas.',
+};
+
+// Estoque diário desde 01/09/2026. Antes de 21/09/2026 não havia coleta de
+// não autorizadas (zero = ausência de coleta, não ausência de sites).
+export const AUTHORIZATION_TREND: AuthorizationTrendPoint[] = [
+  { date: '2026-09-01', displayDate: '01/09', authorized: 150, unauthorized: 0 },
+  { date: '2026-09-02', displayDate: '02/09', authorized: 150, unauthorized: 0 },
+  { date: '2026-09-03', displayDate: '03/09', authorized: 152, unauthorized: 0 },
+  { date: '2026-09-04', displayDate: '04/09', authorized: 152, unauthorized: 0 },
+  { date: '2026-09-05', displayDate: '05/09', authorized: 154, unauthorized: 0 },
+  { date: '2026-09-06', displayDate: '06/09', authorized: 154, unauthorized: 0 },
+  { date: '2026-09-07', displayDate: '07/09', authorized: 155, unauthorized: 0 },
+  { date: '2026-09-08', displayDate: '08/09', authorized: 156, unauthorized: 0 },
+  { date: '2026-09-09', displayDate: '09/09', authorized: 158, unauthorized: 0 },
+  { date: '2026-09-10', displayDate: '10/09', authorized: 160, unauthorized: 0 },
+  { date: '2026-09-11', displayDate: '11/09', authorized: 162, unauthorized: 0 },
+  { date: '2026-09-12', displayDate: '12/09', authorized: 164, unauthorized: 0 },
+  { date: '2026-09-13', displayDate: '13/09', authorized: 166, unauthorized: 0 },
+  { date: '2026-09-14', displayDate: '14/09', authorized: 168, unauthorized: 0 },
+  { date: '2026-09-15', displayDate: '15/09', authorized: 170, unauthorized: 0 },
+  { date: '2026-09-16', displayDate: '16/09', authorized: 172, unauthorized: 0 },
+  { date: '2026-09-17', displayDate: '17/09', authorized: 175, unauthorized: 0 },
+  { date: '2026-09-18', displayDate: '18/09', authorized: 178, unauthorized: 0 },
+  { date: '2026-09-19', displayDate: '19/09', authorized: 182, unauthorized: 0 },
+  { date: '2026-09-20', displayDate: '20/09', authorized: 186, unauthorized: 0 },
+  { date: '2026-09-21', displayDate: '21/09', authorized: 190, unauthorized: 142 },
+  { date: '2026-09-22', displayDate: '22/09', authorized: 214, unauthorized: 148 },
+  { date: '2026-09-23', displayDate: '23/09', authorized: 216, unauthorized: 151 },
+  { date: '2026-09-24', displayDate: '24/09', authorized: 218, unauthorized: 149 },
+  { date: '2026-09-25', displayDate: '25/09', authorized: 220, unauthorized: 163 },
+  { date: '2026-09-26', displayDate: '26/09', authorized: 224, unauthorized: 338 },
+  { date: '2026-09-27', displayDate: '27/09', authorized: 228, unauthorized: 512 },
+  { date: '2026-09-28', displayDate: '28/09', authorized: 232, unauthorized: 689 },
+  { date: '2026-09-29', displayDate: '29/09', authorized: 236, unauthorized: 844 },
+  { date: '2026-09-30', displayDate: '30/09', authorized: 240, unauthorized: 967 },
+  { date: '2026-10-01', displayDate: '01/10', authorized: 244, unauthorized: 1071 },
+  { date: '2026-10-02', displayDate: '02/10', authorized: 248, unauthorized: 1014 },
+];
+
 export const MARKET_SERIES_DATA = {
   totalAuthorizedNational: 114,
   totalAuthorizedEstadual: 28,
