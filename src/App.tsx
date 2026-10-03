@@ -224,7 +224,7 @@ export default function App() {
           )}
 
           {currentPath === '/painel' && (
-            <AdminPanelView entities={entities} onNavigate={(path) => navigate(path)} />
+            <AdminPanelView entities={entities} publicEntities={publicEntities} onNavigate={(path) => navigate(path)} />
           )}
 
           {currentPath === '/operadora' && (
