@@ -173,6 +173,7 @@ export default function App() {
               onBack={() => navigate('/busca')}
               onShare={handleOpenShare}
               onReport={handleOpenReport}
+              onNavigate={(path) => navigate(path)}
             />
           )}
 
