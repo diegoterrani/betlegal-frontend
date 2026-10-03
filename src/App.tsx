@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BetEntity, RegulatoryChange } from './types';
 import { INITIAL_ENTITIES, REGULATORY_CHANGES } from './data/mockData';
+import { fetchRealEntities, fetchRealChanges } from './lib/realData';
 import { ThemeProvider } from './context/ThemeContext';
 import { UserProvider } from './context/UserContext';
 import { ReviewsProvider } from './context/ReviewsContext';
@@ -48,6 +49,23 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [entities, setEntities] = useState<BetEntity[]>(INITIAL_ENTITIES);
   const [changes] = useState<RegulatoryChange[]>(REGULATORY_CHANGES);
+
+  // Dados reais (read-only) do Supabase de prod, usados nas páginas públicas de verificação.
+  // O painel admin e a área da operadora continuam no mock curado (entities/changes acima),
+  // porque dependem de slugs específicos (CLONE_LINKS, OPERATOR_DESK) só presentes no mock.
+  const [publicEntities, setPublicEntities] = useState<BetEntity[]>(INITIAL_ENTITIES);
+  const [publicChanges, setPublicChanges] = useState<RegulatoryChange[]>(REGULATORY_CHANGES);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchRealEntities().then((real) => {
+      if (!cancelled && real && real.length > 0) setPublicEntities(real);
+    });
+    fetchRealChanges().then((real) => {
+      if (!cancelled && real && real.length > 0) setPublicChanges(real);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // Selected detail item for /dominio/:host
   const [activeDomainDetail, setActiveDomainDetail] = useState<{ entity: BetEntity; host: string } | null>(null);
@@ -106,8 +124,8 @@ export default function App() {
         <main className="flex-1">
           {currentPath === '/' && (
             <HomeView
-              entities={entities}
-              changes={changes}
+              entities={publicEntities}
+              changes={publicChanges}
               onSearchSubmit={handleSearchSubmit}
               onNavigate={(path) => navigate(path)}
               onOpenHistory={handleOpenHistory}
@@ -119,7 +137,7 @@ export default function App() {
 
           {currentPath === '/busca' && (
             <SearchView
-              entities={entities}
+              entities={publicEntities}
               initialQuery={searchQuery}
               onOpenHistory={handleOpenHistory}
               onShare={handleOpenShare}
@@ -130,7 +148,7 @@ export default function App() {
 
           {currentPath === '/autorizadas' && (
             <AuthorizedView
-              entities={entities}
+              entities={publicEntities}
               onOpenHistory={handleOpenHistory}
               onShare={handleOpenShare}
               onReport={handleOpenReport}
@@ -140,7 +158,7 @@ export default function App() {
 
           {currentPath === '/radar' && (
             <RadarView
-              entities={entities}
+              entities={publicEntities}
               onOpenHistory={handleOpenHistory}
               onShare={handleOpenShare}
               onReport={handleOpenReport}
@@ -160,7 +178,7 @@ export default function App() {
 
           {currentPath === '/mudancas' && (
             <ChangesView
-              changes={changes}
+              changes={publicChanges}
               onSelectBrand={(brand) => {
                 setSearchQuery(brand);
                 navigate('/busca');
@@ -174,7 +192,7 @@ export default function App() {
 
           {currentPath === '/avaliacoes' && (
             <ReviewsView
-              entities={entities}
+              entities={publicEntities}
               onViewDetails={handleViewDomainDetail}
               onNavigate={(path) => navigate(path)}
             />
@@ -201,7 +219,7 @@ export default function App() {
           )}
 
           {currentPath === '/api' && (
-            <ApiDocsView entities={entities} />
+            <ApiDocsView entities={publicEntities} />
           )}
 
           {currentPath === '/painel' && (
@@ -257,7 +275,7 @@ export default function App() {
         <QuickSearchModal
           isOpen={quickSearchOpen}
           onClose={() => setQuickSearchOpen(false)}
-          entities={entities}
+          entities={publicEntities}
           onSelectEntity={(entity) => {
             handleViewDomainDetail(entity);
           }}
