@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
 import { BetEntity, DomainInfo } from '../types';
 import { STATUS_MAP, LIVENESS_MAP } from '../utils/statusMapping';
-import { 
-  ExternalLink, 
-  Share2, 
-  History, 
-  AlertTriangle, 
-  ShieldCheck, 
-  CheckCircle2, 
-  Copy, 
-  Server, 
-  Lock, 
+import { GlassCard } from './ui/GlassCard';
+import {
+  ExternalLink,
+  Share2,
+  History,
+  AlertTriangle,
+  Copy,
   FileText,
   AlertCircle
 } from 'lucide-react';
@@ -36,10 +33,10 @@ export const BetLegalCard: React.FC<BetLegalCardProps> = ({
 }) => {
   const [copiedHost, setCopiedHost] = useState<string | null>(null);
   const statusInfo = STATUS_MAP[entity.status] || STATUS_MAP.DESCONHECIDA;
-  
-  const primaryDomain: DomainInfo = 
-    entity.domains.find(d => d.host === selectedDomain) || 
-    entity.domains.find(d => d.isPrimary) || 
+
+  const primaryDomain: DomainInfo =
+    entity.domains.find(d => d.host === selectedDomain) ||
+    entity.domains.find(d => d.isPrimary) ||
     entity.domains[0] || {
       host: `${entity.slug}.com`,
       isPrimary: true,
@@ -58,59 +55,56 @@ export const BetLegalCard: React.FC<BetLegalCardProps> = ({
   };
 
   return (
-    <article 
-      className="bg-white dark:bg-[#0D1B2A] border border-slate-200 dark:border-slate-800 rounded-lg p-5 sm:p-6 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-colors relative"
-      aria-label={`Ficha de verificação: ${entity.brandName} - ${primaryDomain.host}`}
-    >
-      {/* 1. CABEÇALHO PADRÃO BETLEGAL (Page 14 Brand Book) */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+    <GlassCard className="p-5 sm:p-6 relative transition-colors hover:border-white/20">
+      <article aria-label={`Ficha de verificação: ${entity.brandName} - ${primaryDomain.host}`}>
+      {/* 1. CABEÇALHO PADRÃO BETLEGAL */}
+      <div
+        className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pb-4 border-b"
+        style={{ borderColor: 'var(--color-card-border)' }}
+      >
         <div>
-          {/* Identidade: Marca */}
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 
+            <h3
               onClick={() => onViewDetails ? onViewDetails(entity) : null}
-              className={`text-xl sm:text-2xl font-bold tracking-tight text-[#0B1F33] dark:text-white ${onViewDetails ? 'hover:text-[#1F5FD1] dark:hover:text-[#3B82F6] cursor-pointer' : ''}`}
+              className={`text-xl sm:text-2xl font-semibold tracking-tight ${onViewDetails ? 'hover:opacity-80 cursor-pointer' : ''}`}
+              style={{ color: 'var(--color-text-primary)' }}
             >
               {entity.brandName.toUpperCase()}
             </h3>
 
             {entity.tradeNames && entity.tradeNames.length > 1 && (
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">
+              <span className="text-xs font-normal" style={{ color: 'var(--color-text-tertiary)' }}>
                 (Grupo / Marcas: {entity.tradeNames.join(', ')})
               </span>
             )}
           </div>
 
-          {/* Domínio com botão de cópia rápida */}
           <div className="flex items-center gap-2 mt-1">
-            <span className="font-mono text-sm sm:text-base font-semibold text-slate-800 dark:text-slate-200 tracking-tight">
+            <span className="font-mono text-sm sm:text-base font-semibold tracking-tight" style={{ color: 'var(--color-text-secondary)' }}>
               {primaryDomain.host}
             </span>
             <button
               onClick={(e) => handleCopyDomain(primaryDomain.host, e)}
-              className="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 p-1 rounded transition-colors cursor-pointer text-xs flex items-center gap-1"
+              className="p-1 rounded transition-colors cursor-pointer text-xs flex items-center gap-1 hover:bg-white/10"
+              style={{ color: 'var(--color-text-tertiary)' }}
               title="Copiar domínio"
               aria-label="Copiar domínio"
             >
               <Copy className="w-3.5 h-3.5" />
               {copiedHost === primaryDomain.host && (
-                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-sans">Copiado</span>
+                <span className="text-[11px] font-sans" style={{ color: 'var(--status-autorizada)' }}>Copiado</span>
               )}
             </button>
           </div>
         </div>
 
-        {/* Status Factual Padronizado (Semáforo evitado, texto claro) */}
         <div className="sm:text-right">
-          <div className="inline-block px-3 py-1 rounded text-xs sm:text-sm font-semibold tracking-wide uppercase border">
-            <span className={statusInfo.badgeClass.split(' ')[0]}>
-              {statusInfo.publicText.toUpperCase()}
-            </span>
+          <div className={`inline-block px-3 py-1 rounded text-xs sm:text-sm font-semibold tracking-wide uppercase border ${statusInfo.badgeClass}`}>
+            {statusInfo.publicText.toUpperCase()}
           </div>
 
-          {/* Linha de Metadados: Fonte + Data/Hora (Page 14) */}
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 flex items-center sm:justify-end gap-1.5">
-            <span className="font-medium text-slate-700 dark:text-slate-300">
+          <div className="text-xs mt-1.5 flex items-center sm:justify-end gap-1.5" style={{ color: 'var(--color-text-tertiary)' }}>
+            <span className="font-medium" style={{ color: 'var(--color-text-secondary)' }}>
               {entity.sphere === 'federal' ? 'SPA/MF' : entity.stateJurisdiction ? entity.stateJurisdiction : 'Base Pública'}
             </span>
             <span aria-hidden="true">·</span>
@@ -121,11 +115,17 @@ export const BetLegalCard: React.FC<BetLegalCardProps> = ({
 
       {/* 2. CORPO DO CARD: EVIDÊNCIA & DADOS TÉCNICOS */}
       <div className="py-4 space-y-3.5">
-        
-        {/* Alerta de Clone / Risco (Se detectado) */}
+
         {entity.cloneRiskNotice && (
-          <div className="p-3 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
-            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div
+            className="p-3 rounded text-xs flex items-start gap-2.5 border"
+            style={{
+              backgroundColor: 'color-mix(in srgb, var(--status-atencao) 10%, transparent)',
+              borderColor: 'color-mix(in srgb, var(--status-atencao) 35%, transparent)',
+              color: 'var(--status-atencao)',
+            }}
+          >
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
             <div>
               <strong className="font-semibold">Atenção à evidência: </strong>
               {entity.cloneRiskNotice}
@@ -133,55 +133,56 @@ export const BetLegalCard: React.FC<BetLegalCardProps> = ({
           </div>
         )}
 
-        {/* Resumo da Evidência Factual */}
-        <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+        <div className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
           <p>{entity.evidenceSummary}</p>
         </div>
 
-        {/* Ficha técnica em grade limpa */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-2 text-xs">
-          
-          {/* Razão Social e CNPJ */}
-          <div className="bg-[#F6F8FB] dark:bg-[#081320] p-2.5 rounded border border-slate-100 dark:border-slate-800">
-            <span className="text-slate-500 dark:text-slate-400 block mb-0.5">Razão Social & CNPJ</span>
-            <span className="text-slate-900 dark:text-slate-100 font-medium line-clamp-1" title={entity.legalName}>
+          <div className="p-2.5 rounded border" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'var(--color-card-border)' }}>
+            <span className="block mb-0.5" style={{ color: 'var(--color-text-tertiary)' }}>Razão Social & CNPJ</span>
+            <span className="font-medium line-clamp-1 block" style={{ color: 'var(--color-text-primary)' }} title={entity.legalName}>
               {entity.legalName}
             </span>
-            <span className="font-mono text-slate-600 dark:text-slate-400 text-[11px] block mt-0.5">
+            <span className="font-mono text-[11px] block mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>
               {entity.cnpj}
             </span>
           </div>
 
-          {/* Processo / Outorga */}
-          <div className="bg-[#F6F8FB] dark:bg-[#081320] p-2.5 rounded border border-slate-100 dark:border-slate-800">
-            <span className="text-slate-500 dark:text-slate-400 block mb-0.5">Ato / Protocolo Regulatório</span>
-            <span className="text-slate-900 dark:text-slate-100 font-medium block truncate" title={entity.portariaNumber || entity.sigapProtocol}>
+          <div className="p-2.5 rounded border" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'var(--color-card-border)' }}>
+            <span className="block mb-0.5" style={{ color: 'var(--color-text-tertiary)' }}>Ato / Protocolo Regulatório</span>
+            <span className="font-medium block truncate" style={{ color: 'var(--color-text-primary)' }} title={entity.portariaNumber || entity.sigapProtocol}>
               {entity.sigapProtocol ? `SIGAP nº ${entity.sigapProtocol}` : entity.portariaNumber || 'Sem protocolo formal'}
             </span>
-            <span className="text-slate-500 dark:text-slate-400 text-[11px] block mt-0.5 truncate" title={entity.officialSource}>
+            <span className="text-[11px] block mt-0.5 truncate" style={{ color: 'var(--color-text-tertiary)' }} title={entity.officialSource}>
               {entity.officialSource}
             </span>
           </div>
 
-          {/* Liveness Técnico (Separado do status legal!) */}
-          <div className="bg-[#F6F8FB] dark:bg-[#081320] p-2.5 rounded border border-slate-100 dark:border-slate-800">
-            <span className="text-slate-500 dark:text-slate-400 block mb-0.5">Sonda Técnica (Liveness)</span>
+          <div className="p-2.5 rounded border" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'var(--color-card-border)' }}>
+            <span className="block mb-0.5" style={{ color: 'var(--color-text-tertiary)' }}>Sonda Técnica (Liveness)</span>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <span className={`w-2 h-2 rounded-full ${primaryDomain.liveness === 'ONLINE' ? 'bg-emerald-500' : primaryDomain.liveness === 'BLOCKED_DNS' ? 'bg-red-500' : 'bg-amber-500'}`} />
+              <span
+                className="w-2 h-2 rounded-full"
+                style={{
+                  backgroundColor:
+                    primaryDomain.liveness === 'ONLINE' ? 'var(--status-autorizada)' :
+                    primaryDomain.liveness === 'BLOCKED_DNS' ? 'var(--status-nao-autorizada)' :
+                    'var(--status-atencao)',
+                }}
+              />
               <span className={`font-medium ${livenessInfo.textClass}`}>
                 {livenessInfo.label}
               </span>
             </div>
-            <span className="text-slate-500 dark:text-slate-400 text-[11px] block mt-0.5 font-mono truncate">
+            <span className="text-[11px] block mt-0.5 font-mono truncate" style={{ color: 'var(--color-text-tertiary)' }}>
               {primaryDomain.ipAddress || 'DNS em análise'}
             </span>
           </div>
         </div>
 
-        {/* Lista de domínios alternativos/secundários se houver */}
         {entity.domains.length > 1 && (
           <div className="pt-1">
-            <span className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
+            <span className="text-xs block mb-1" style={{ color: 'var(--color-text-tertiary)' }}>
               Outros domínios registrados sob esta autorização:
             </span>
             <div className="flex flex-wrap gap-1.5">
@@ -189,11 +190,12 @@ export const BetLegalCard: React.FC<BetLegalCardProps> = ({
                 <button
                   key={dom.host}
                   onClick={() => onSelectDomain ? onSelectDomain(dom.host) : null}
-                  className={`font-mono text-xs px-2 py-0.5 rounded border transition-colors cursor-pointer ${
+                  className="font-mono text-xs px-2 py-0.5 rounded border transition-colors cursor-pointer"
+                  style={
                     dom.host === primaryDomain.host
-                      ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 border-slate-900 dark:border-slate-100'
-                      : 'bg-white dark:bg-[#0B1726] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
-                  }`}
+                      ? { backgroundColor: 'var(--color-text-primary)', color: 'var(--color-bg)', borderColor: 'var(--color-text-primary)' }
+                      : { color: 'var(--color-text-secondary)', borderColor: 'var(--color-card-border)' }
+                  }
                 >
                   {dom.host}
                 </button>
@@ -203,37 +205,39 @@ export const BetLegalCard: React.FC<BetLegalCardProps> = ({
         )}
       </div>
 
-      {/* 3. BARRA DE AÇÕES OBRIGATÓRIAS (Page 14) */}
-      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-        
+      {/* 3. BARRA DE AÇÕES */}
+      <div
+        className="pt-3 border-t flex flex-wrap items-center justify-between gap-3 text-xs"
+        style={{ borderColor: 'var(--color-card-border)' }}
+      >
         <div className="flex items-center gap-4 flex-wrap">
-          {/* Ver fonte oficial */}
           {entity.officialSourceUrl && (
             <a
               href={entity.officialSourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[#1F5FD1] dark:text-sky-400 hover:underline font-medium inline-flex items-center gap-1 cursor-pointer"
+              className="hover:underline font-medium inline-flex items-center gap-1 cursor-pointer"
+              style={{ color: 'var(--status-dado-declarado)' }}
             >
               Ver fonte
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           )}
 
-          {/* Ver histórico */}
           <button
             onClick={() => onOpenHistory ? onOpenHistory(entity) : null}
-            className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium inline-flex items-center gap-1 cursor-pointer transition-colors"
+            className="font-medium inline-flex items-center gap-1 cursor-pointer transition-colors hover:opacity-80"
+            style={{ color: 'var(--color-text-secondary)' }}
           >
             <History className="w-3.5 h-3.5" />
             Ver histórico ({entity.historicalChanges.length})
           </button>
 
-          {/* Ficha completa do domínio */}
           {onViewDetails && (
             <button
               onClick={() => onViewDetails(entity)}
-              className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium inline-flex items-center gap-1 cursor-pointer transition-colors"
+              className="font-medium inline-flex items-center gap-1 cursor-pointer transition-colors hover:opacity-80"
+              style={{ color: 'var(--color-text-secondary)' }}
             >
               <FileText className="w-3.5 h-3.5" />
               Ficha detalhada
@@ -242,20 +246,20 @@ export const BetLegalCard: React.FC<BetLegalCardProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Compartilhar */}
           <button
             onClick={() => onShare ? onShare(entity, primaryDomain.host) : null}
-            className="text-slate-600 dark:text-slate-400 hover:text-[#1F5FD1] dark:hover:text-sky-400 font-medium inline-flex items-center gap-1 px-2.5 py-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-colors cursor-pointer"
+            className="font-medium inline-flex items-center gap-1 px-2.5 py-1 rounded border border-transparent transition-colors cursor-pointer hover:bg-white/5"
+            style={{ color: 'var(--color-text-secondary)' }}
             title="Compartilhar verificação"
           >
             <Share2 className="w-3.5 h-3.5" />
             Compartilhar
           </button>
 
-          {/* Reportar correção / contestação */}
           <button
             onClick={() => onReport ? onReport(entity, primaryDomain.host) : null}
-            className="text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 font-medium inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-rose-50/50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+            className="font-medium inline-flex items-center gap-1 px-2 py-1 rounded transition-colors cursor-pointer"
+            style={{ color: 'var(--status-nao-autorizada)' }}
             title="Reportar correção ou clone"
           >
             <AlertCircle className="w-3.5 h-3.5" />
@@ -263,6 +267,7 @@ export const BetLegalCard: React.FC<BetLegalCardProps> = ({
           </button>
         </div>
       </div>
-    </article>
+      </article>
+    </GlassCard>
   );
 };

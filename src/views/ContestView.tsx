@@ -1,21 +1,18 @@
 import React, { useState } from 'react';
 import { ContestationTicket } from '../types';
 import { INITIAL_TICKETS } from '../data/mockData';
-import { 
-  ShieldAlert, 
-  Send, 
-  CheckCircle2, 
-  FileText, 
-  AlertTriangle, 
-  Clock, 
-  Info,
-  Building,
-  UserCheck
-} from 'lucide-react';
+import { CheckCircle2, Send } from 'lucide-react';
+import { GlassCard } from '../components/ui/GlassCard';
+import { AmbientGlow } from '../components/ui/AmbientGlow';
 
 interface ContestViewProps {
   initialHost?: string;
 }
+
+const fieldClass = "w-full text-xs p-2.5 rounded focus:outline-none border bg-transparent";
+const fieldStyle = { borderColor: 'var(--color-card-border)', color: 'var(--color-text-primary)' };
+const labelClass = "block text-xs font-semibold mb-1";
+const labelStyle = { color: 'var(--color-text-secondary)' };
 
 export const ContestView: React.FC<ContestViewProps> = ({ initialHost = '' }) => {
   const [tickets, setTickets] = useState<ContestationTicket[]>(INITIAL_TICKETS);
@@ -70,33 +67,34 @@ export const ContestView: React.FC<ContestViewProps> = ({ initialHost = '' }) =>
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-      
+    <div className="relative max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+      <AmbientGlow />
+
       {/* Title */}
-      <div className="border-b border-slate-200 dark:border-slate-800 pb-5">
-        <div className="text-xs font-bold text-[#1F5FD1] dark:text-sky-400 uppercase tracking-wider mb-1">
+      <div className="border-b pb-5" style={{ borderColor: 'var(--color-card-border)' }}>
+        <div className="text-[11px] font-mono font-medium uppercase tracking-[0.15em] mb-1" style={{ color: 'var(--status-dado-declarado)' }}>
           Canal Formal de Governança
         </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0B1F33] dark:text-white">
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>
           Contestação Cadastral e Reporte de Clones
         </h1>
-        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+        <p className="text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
           Garantia de contraditório e retificação célere. Operadores e cidadãos podem contestar informações, notificar novos domínios autorizados ou denunciar páginas clonadas.
         </p>
       </div>
 
       {submittedTicket ? (
-        <div className="bg-white dark:bg-[#0D1B2A] border-2 border-emerald-300 dark:border-emerald-700 rounded-lg p-6 sm:p-8 space-y-4 shadow-sm text-center transition-colors">
-          <CheckCircle2 className="w-12 h-12 text-emerald-600 dark:text-emerald-400 mx-auto" />
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+        <GlassCard className="p-6 sm:p-8 space-y-4 text-center" style={{ borderColor: 'var(--status-autorizada)' }}>
+          <CheckCircle2 className="w-12 h-12 mx-auto" style={{ color: 'var(--status-autorizada)' }} />
+          <h2 className="text-xl sm:text-2xl font-semibold" style={{ color: 'var(--color-text-primary)' }}>
             Protocolo de Contestação Registrado
           </h2>
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
+          <p className="text-xs sm:text-sm max-w-md mx-auto" style={{ color: 'var(--color-text-secondary)' }}>
             Sua solicitação foi anexada à fila operacional da próxima janela de auditoria.
           </p>
 
-          <div className="bg-[#F6F8FB] dark:bg-[#081320] border border-slate-200 dark:border-slate-800 rounded p-4 max-w-sm mx-auto font-mono text-xs text-left space-y-1.5 text-slate-800 dark:text-slate-200">
-            <div><strong>Número de Protocolo:</strong> <span className="text-[#1F5FD1] dark:text-sky-400 font-bold">{submittedTicket.id}</span></div>
+          <div className="rounded p-4 max-w-sm mx-auto font-mono text-xs text-left space-y-1.5 border" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'var(--color-card-border)', color: 'var(--color-text-secondary)' }}>
+            <div><strong>Número de Protocolo:</strong> <span className="font-bold" style={{ color: 'var(--status-dado-declarado)' }}>{submittedTicket.id}</span></div>
             <div><strong>Alvo:</strong> {submittedTicket.brandOrDomain}</div>
             <div><strong>Registrado em:</strong> {submittedTicket.createdAt}</div>
             <div><strong>Status inicial:</strong> Recebido para triagem técnica</div>
@@ -105,25 +103,27 @@ export const ContestView: React.FC<ContestViewProps> = ({ initialHost = '' }) =>
           <div className="pt-2">
             <button
               onClick={handleReset}
-              className="px-5 py-2 bg-[#0B1F33] dark:bg-[#1F5FD1] text-white text-xs font-semibold rounded hover:bg-slate-800 dark:hover:bg-blue-600 transition-colors cursor-pointer"
+              className="px-5 py-2 text-xs font-semibold rounded transition-colors cursor-pointer"
+              style={{ backgroundColor: 'var(--status-dado-declarado)', color: 'var(--color-bg)' }}
             >
               Registrar Nova Solicitação
             </button>
           </div>
-        </div>
+        </GlassCard>
       ) : (
-        <div className="bg-white dark:bg-[#0D1B2A] border border-slate-200 dark:border-slate-800 rounded-lg p-6 sm:p-8 shadow-xs space-y-6 transition-colors">
+        <GlassCard className="p-6 sm:p-8 space-y-6">
           <form onSubmit={handleSubmit} className="space-y-4">
-            
+
             {/* Tipo de solicitação */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className={labelClass} style={labelStyle}>
                 Finalidade do Requerimento *
               </label>
               <select
                 value={formData.type}
                 onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
-                className="w-full text-xs p-2.5 bg-[#F6F8FB] dark:bg-[#081320] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded focus:outline-none focus:border-[#1F5FD1]"
+                className={fieldClass}
+                style={fieldStyle}
               >
                 <option value="contestacao_status">Contestação de Status Regulatório (Apresentar Portaria/DOU)</option>
                 <option value="denuncia_clone">Denúncia de Clone / Lookalike / Phishing de Marca</option>
@@ -134,7 +134,7 @@ export const ContestView: React.FC<ContestViewProps> = ({ initialHost = '' }) =>
 
             {/* Marca / Domínio */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className={labelClass} style={labelStyle}>
                 Marca ou Domínio Objeto *
               </label>
               <input
@@ -143,14 +143,15 @@ export const ContestView: React.FC<ContestViewProps> = ({ initialHost = '' }) =>
                 value={formData.brandOrDomain}
                 onChange={(e) => setFormData({ ...formData, brandOrDomain: e.target.value })}
                 placeholder="Ex: exemplo.bet.br ou exemplo-bonus-falso.xyz"
-                className="w-full text-xs p-2.5 bg-[#F6F8FB] dark:bg-[#081320] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded font-mono focus:outline-none focus:border-[#1F5FD1]"
+                className={`${fieldClass} font-mono`}
+                style={fieldStyle}
               />
             </div>
 
             {/* Identificação do Requerente */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className={labelClass} style={labelStyle}>
                   Nome do Solicitante / Procurador *
                 </label>
                 <input
@@ -159,12 +160,13 @@ export const ContestView: React.FC<ContestViewProps> = ({ initialHost = '' }) =>
                   value={formData.requesterName}
                   onChange={(e) => setFormData({ ...formData, requesterName: e.target.value })}
                   placeholder="Nome completo ou razão social"
-                  className="w-full text-xs p-2.5 bg-[#F6F8FB] dark:bg-[#081320] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded focus:outline-none focus:border-[#1F5FD1]"
+                  className={fieldClass}
+                  style={fieldStyle}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className={labelClass} style={labelStyle}>
                   E-mail Institucional para Resposta *
                 </label>
                 <input
@@ -173,14 +175,15 @@ export const ContestView: React.FC<ContestViewProps> = ({ initialHost = '' }) =>
                   value={formData.requesterEmail}
                   onChange={(e) => setFormData({ ...formData, requesterEmail: e.target.value })}
                   placeholder="exemplo@operador.com.br"
-                  className="w-full text-xs p-2.5 bg-[#F6F8FB] dark:bg-[#081320] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded focus:outline-none focus:border-[#1F5FD1]"
+                  className={fieldClass}
+                  style={fieldStyle}
                 />
               </div>
             </div>
 
             {/* Papel */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className={labelClass} style={labelStyle}>
                 Qualificação do Requerente *
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
@@ -189,26 +192,30 @@ export const ContestView: React.FC<ContestViewProps> = ({ initialHost = '' }) =>
                   { id: 'usuario', label: 'Apostador / Consumidor' },
                   { id: 'orgao_publico', label: 'Órgão Regulador / Público' },
                   { id: 'advogado', label: 'Pesquisador / Imprensa' },
-                ].map((item) => (
-                  <button
-                    type="button"
-                    key={item.id}
-                    onClick={() => setFormData({ ...formData, requesterRole: item.id as any })}
-                    className={`p-2 rounded border text-left cursor-pointer transition-colors ${
-                      formData.requesterRole === item.id
-                        ? 'bg-[#0B1F33] dark:bg-[#1F5FD1] text-white border-[#0B1F33] dark:border-[#1F5FD1]'
-                        : 'bg-[#F6F8FB] dark:bg-[#081320] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+                ].map((item) => {
+                  const active = formData.requesterRole === item.id;
+                  return (
+                    <button
+                      type="button"
+                      key={item.id}
+                      onClick={() => setFormData({ ...formData, requesterRole: item.id as any })}
+                      className="p-2 rounded border text-left cursor-pointer transition-colors hover:bg-white/5"
+                      style={{
+                        backgroundColor: active ? 'var(--status-dado-declarado)' : 'rgba(255,255,255,0.03)',
+                        borderColor: active ? 'var(--status-dado-declarado)' : 'var(--color-card-border)',
+                        color: active ? 'var(--color-bg)' : 'var(--color-text-secondary)',
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             {/* Justificativa */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className={labelClass} style={labelStyle}>
                 Fundamentação Factual / Detalhes da Contestação *
               </label>
               <textarea
@@ -217,13 +224,14 @@ export const ContestView: React.FC<ContestViewProps> = ({ initialHost = '' }) =>
                 value={formData.justification}
                 onChange={(e) => setFormData({ ...formData, justification: e.target.value })}
                 placeholder="Descreva com precisão o fato: número da portaria publicada, data do Diário Oficial, evidência de titularidade da marca ou comportamento irregular do clone denunciado..."
-                className="w-full text-xs p-2.5 bg-[#F6F8FB] dark:bg-[#081320] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded focus:outline-none focus:border-[#1F5FD1] leading-relaxed"
+                className={`${fieldClass} leading-relaxed`}
+                style={fieldStyle}
               />
             </div>
 
             {/* Links de Evidência */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className={labelClass} style={labelStyle}>
                 Links de Evidência e Fontes Oficiais (Opcional)
               </label>
               <input
@@ -231,52 +239,58 @@ export const ContestView: React.FC<ContestViewProps> = ({ initialHost = '' }) =>
                 value={formData.evidenceLinks}
                 onChange={(e) => setFormData({ ...formData, evidenceLinks: e.target.value })}
                 placeholder="Ex: https://in.gov.br/materia/... ou link de processo judicial"
-                className="w-full text-xs p-2.5 bg-[#F6F8FB] dark:bg-[#081320] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded font-mono focus:outline-none focus:border-[#1F5FD1]"
+                className={`${fieldClass} font-mono`}
+                style={fieldStyle}
               />
             </div>
 
             {/* Submit CTA */}
             <div className="pt-2 flex items-center justify-between">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400">
+              <span className="text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
                 Prazo de triagem técnica: até 12 horas úteis.
               </span>
               <button
                 type="submit"
-                className="px-6 py-2.5 bg-[#1F5FD1] hover:bg-[#184ebd] text-white font-bold text-xs sm:text-sm rounded transition-colors cursor-pointer flex items-center gap-1.5"
+                className="px-6 py-2.5 font-semibold text-xs sm:text-sm rounded transition-colors cursor-pointer flex items-center gap-1.5"
+                style={{ backgroundColor: 'var(--status-dado-declarado)', color: 'var(--color-bg)' }}
               >
                 <Send className="w-4 h-4" />
                 Submeter para Avaliação
               </button>
             </div>
           </form>
-        </div>
+        </GlassCard>
       )}
 
       {/* Recentes Protocolos Públicos Anônimos */}
-      <div className="bg-white dark:bg-[#0D1B2A] border border-slate-200 dark:border-slate-800 rounded-lg p-5 space-y-3 transition-colors">
-        <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+      <GlassCard className="p-5 space-y-3">
+        <h3 className="text-[11px] font-mono font-medium uppercase tracking-[0.15em]" style={{ color: 'var(--color-text-tertiary)' }}>
           Transparência da Fila de Contestação
         </h3>
-        <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-          {tickets.slice(0, 3).map((t) => (
-            <div key={t.id} className="py-2.5 flex items-center justify-between flex-wrap gap-2">
+        <div className="text-xs">
+          {tickets.slice(0, 3).map((t, idx) => (
+            <div key={t.id} className="py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--color-card-border)' }}>
               <div>
-                <span className="font-mono font-bold text-slate-800 dark:text-slate-200 mr-2">{t.id}</span>
-                <span className="text-slate-600 dark:text-slate-400 mr-2">Alvo: <strong className="text-slate-900 dark:text-slate-100">{t.brandOrDomain}</strong></span>
-                <span className="text-slate-400 dark:text-slate-500">({t.type.replace('_', ' ')})</span>
+                <span className="font-mono font-bold mr-2" style={{ color: 'var(--color-text-secondary)' }}>{t.id}</span>
+                <span className="mr-2" style={{ color: 'var(--color-text-tertiary)' }}>Alvo: <strong style={{ color: 'var(--color-text-primary)' }}>{t.brandOrDomain}</strong></span>
+                <span style={{ color: 'var(--color-text-tertiary)' }}>({t.type.replace('_', ' ')})</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500">{t.createdAt}</span>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                  t.status === 'concluido' ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300' : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300'
-                }`}>
+                <span className="font-mono text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>{t.createdAt}</span>
+                <span
+                  className="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+                  style={{
+                    color: t.status === 'concluido' ? 'var(--status-autorizada)' : 'var(--status-atencao)',
+                    backgroundColor: t.status === 'concluido' ? 'color-mix(in srgb, var(--status-autorizada) 12%, transparent)' : 'color-mix(in srgb, var(--status-atencao) 12%, transparent)',
+                  }}
+                >
                   {t.status.replace('_', ' ')}
                 </span>
               </div>
             </div>
           ))}
         </div>
-      </div>
+      </GlassCard>
 
     </div>
   );

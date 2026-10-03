@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { BetEntity, RegulatoryChange } from './types';
 import { INITIAL_ENTITIES, REGULATORY_CHANGES } from './data/mockData';
+import { fetchRealEntities, fetchRealChanges } from './lib/realData';
 import { ThemeProvider } from './context/ThemeContext';
+import { UserProvider } from './context/UserContext';
+import { ReviewsProvider } from './context/ReviewsContext';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { ShareModal } from './components/ShareModal';
@@ -21,12 +24,48 @@ import { MethodologyView } from './views/MethodologyView';
 import { ContestView } from './views/ContestView';
 import { ApiDocsView } from './views/ApiDocsView';
 import { AdminPanelView } from './views/AdminPanelView';
+import { OperatorDeskView } from './views/OperatorDeskView';
+import { NewsView } from './views/NewsView';
+import { LoginView } from './views/LoginView';
+import { RegisterView } from './views/RegisterView';
+import { AboutView } from './views/AboutView';
+import { SourcesView } from './views/SourcesView';
+import { PrivacyView } from './views/PrivacyView';
+import { ProfileView } from './views/ProfileView';
+import { NotFoundView } from './views/NotFoundView';
+
+const KNOWN_PATHS = [
+  '/', '/busca', '/autorizadas', '/radar', '/mudancas', '/series', '/avaliacoes',
+  '/metodologia', '/sobre', '/fontes', '/privacidade', '/contestar', '/api',
+  '/painel', '/operadora', '/noticias', '/entrar', '/criar-conta', '/perfil',
+];
+
+function isKnownPath(path: string): boolean {
+  return KNOWN_PATHS.includes(path) || path.startsWith('/dominio/');
+}
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState<string>('/');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [entities, setEntities] = useState<BetEntity[]>(INITIAL_ENTITIES);
   const [changes] = useState<RegulatoryChange[]>(REGULATORY_CHANGES);
+
+  // Dados reais (read-only) do Supabase de prod, usados nas páginas públicas de verificação.
+  // O painel admin e a área da operadora continuam no mock curado (entities/changes acima),
+  // porque dependem de slugs específicos (CLONE_LINKS, OPERATOR_DESK) só presentes no mock.
+  const [publicEntities, setPublicEntities] = useState<BetEntity[]>(INITIAL_ENTITIES);
+  const [publicChanges, setPublicChanges] = useState<RegulatoryChange[]>(REGULATORY_CHANGES);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchRealEntities().then((real) => {
+      if (!cancelled && real && real.length > 0) setPublicEntities(real);
+    });
+    fetchRealChanges().then((real) => {
+      if (!cancelled && real && real.length > 0) setPublicChanges(real);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // Selected detail item for /dominio/:host
   const [activeDomainDetail, setActiveDomainDetail] = useState<{ entity: BetEntity; host: string } | null>(null);
@@ -66,9 +105,14 @@ export default function App() {
   };
 
   return (
+    <UserProvider>
+    <ReviewsProvider>
     <ThemeProvider>
-      <div className="min-h-screen flex flex-col bg-[#F6F8FB] dark:bg-[#081320] text-[#0B1F33] dark:text-slate-100 selection:bg-[#1F5FD1]/20 selection:text-[#0B1F33] transition-colors">
-        
+      <div
+        className="min-h-screen flex flex-col transition-colors"
+        style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+      >
+
         {/* Top Bar Header */}
         <Header
           currentPath={currentPath}
@@ -80,8 +124,8 @@ export default function App() {
         <main className="flex-1">
           {currentPath === '/' && (
             <HomeView
-              entities={entities}
-              changes={changes}
+              entities={publicEntities}
+              changes={publicChanges}
               onSearchSubmit={handleSearchSubmit}
               onNavigate={(path) => navigate(path)}
               onOpenHistory={handleOpenHistory}
@@ -93,7 +137,7 @@ export default function App() {
 
           {currentPath === '/busca' && (
             <SearchView
-              entities={entities}
+              entities={publicEntities}
               initialQuery={searchQuery}
               onOpenHistory={handleOpenHistory}
               onShare={handleOpenShare}
@@ -104,7 +148,7 @@ export default function App() {
 
           {currentPath === '/autorizadas' && (
             <AuthorizedView
-              entities={entities}
+              entities={publicEntities}
               onOpenHistory={handleOpenHistory}
               onShare={handleOpenShare}
               onReport={handleOpenReport}
@@ -114,7 +158,7 @@ export default function App() {
 
           {currentPath === '/radar' && (
             <RadarView
-              entities={entities}
+              entities={publicEntities}
               onOpenHistory={handleOpenHistory}
               onShare={handleOpenShare}
               onReport={handleOpenReport}
@@ -134,7 +178,7 @@ export default function App() {
 
           {currentPath === '/mudancas' && (
             <ChangesView
-              changes={changes}
+              changes={publicChanges}
               onSelectBrand={(brand) => {
                 setSearchQuery(brand);
                 navigate('/busca');
@@ -148,13 +192,26 @@ export default function App() {
 
           {currentPath === '/avaliacoes' && (
             <ReviewsView
-              entities={entities}
+              entities={publicEntities}
               onViewDetails={handleViewDomainDetail}
+              onNavigate={(path) => navigate(path)}
             />
           )}
 
           {currentPath === '/metodologia' && (
-            <MethodologyView />
+            <MethodologyView onNavigate={(path) => navigate(path)} />
+          )}
+
+          {currentPath === '/sobre' && (
+            <AboutView onNavigate={(path) => navigate(path)} />
+          )}
+
+          {currentPath === '/fontes' && (
+            <SourcesView />
+          )}
+
+          {currentPath === '/privacidade' && (
+            <PrivacyView />
           )}
 
           {currentPath === '/contestar' && (
@@ -162,11 +219,35 @@ export default function App() {
           )}
 
           {currentPath === '/api' && (
-            <ApiDocsView entities={entities} />
+            <ApiDocsView entities={publicEntities} />
           )}
 
           {currentPath === '/painel' && (
-            <AdminPanelView entities={entities} />
+            <AdminPanelView entities={entities} onNavigate={(path) => navigate(path)} />
+          )}
+
+          {currentPath === '/operadora' && (
+            <OperatorDeskView entities={entities} onNavigate={(path) => navigate(path)} />
+          )}
+
+          {currentPath === '/noticias' && (
+            <NewsView />
+          )}
+
+          {currentPath === '/entrar' && (
+            <LoginView onNavigate={(path) => navigate(path)} />
+          )}
+
+          {currentPath === '/criar-conta' && (
+            <RegisterView onNavigate={(path) => navigate(path)} />
+          )}
+
+          {currentPath === '/perfil' && (
+            <ProfileView onNavigate={(path) => navigate(path)} />
+          )}
+
+          {!isKnownPath(currentPath) && (
+            <NotFoundView onNavigate={(path) => navigate(path)} />
           )}
         </main>
 
@@ -194,7 +275,7 @@ export default function App() {
         <QuickSearchModal
           isOpen={quickSearchOpen}
           onClose={() => setQuickSearchOpen(false)}
-          entities={entities}
+          entities={publicEntities}
           onSelectEntity={(entity) => {
             handleViewDomainDetail(entity);
           }}
@@ -203,5 +284,7 @@ export default function App() {
 
       </div>
     </ThemeProvider>
+    </ReviewsProvider>
+    </UserProvider>
   );
 }

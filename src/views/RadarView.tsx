@@ -1,20 +1,15 @@
 import React, { useState } from 'react';
 import { BetEntity } from '../types';
 import { BetLegalCard } from '../components/BetLegalCard';
-import { STATUS_MAP } from '../utils/statusMapping';
-import { 
-  AlertTriangle, 
-  ShieldAlert, 
-  Search, 
-  Globe, 
-  Server, 
-  Lock, 
-  ExternalLink, 
-  Radio, 
-  Check, 
-  XCircle, 
+import { GlassCard } from '../components/ui/GlassCard';
+import { AmbientGlow } from '../components/ui/AmbientGlow';
+import { KpiCard } from '../components/ui/KpiCard';
+import {
+  AlertTriangle,
+  Search,
+  Globe,
+  Radio,
   RefreshCw,
-  Copy
 } from 'lucide-react';
 
 interface RadarViewProps {
@@ -47,22 +42,25 @@ export const RadarView: React.FC<RadarViewProps> = ({
     notes: string;
   } | null>(null);
 
-  // Filter unauthorized / clone / blocked entities
-  const cloneAndLookalikes = entities.filter(e => 
-    e.status === 'NAO_AUTORIZADA_DETECTADA' || 
+  const cloneAndLookalikes = entities.filter(e =>
+    e.status === 'NAO_AUTORIZADA_DETECTADA' ||
     Boolean(e.cloneRiskNotice)
   );
 
-  const blockedEntities = entities.filter(e => 
+  const blockedEntities = entities.filter(e =>
     e.status === 'BLOQUEADA_ANATEL'
   );
+
+  const onlineLookalikes = cloneAndLookalikes.filter(e =>
+    e.domains.some(d => d.liveness === 'ONLINE')
+  ).length;
 
   const handleRunProbe = (e: React.FormEvent) => {
     e.preventDefault();
     if (!probeInput.trim()) return;
 
     const rawHost = probeInput.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-    
+
     setProbeResult({
       host: rawHost,
       checked: false,
@@ -76,8 +74,7 @@ export const RadarView: React.FC<RadarViewProps> = ({
     });
 
     setTimeout(() => {
-      // Find matching entity
-      const match = entities.find(ent => 
+      const match = entities.find(ent =>
         ent.domains.some(d => d.host.toLowerCase() === rawHost) ||
         ent.brandName.toLowerCase() === rawHost.toLowerCase()
       );
@@ -125,36 +122,66 @@ export const RadarView: React.FC<RadarViewProps> = ({
     }, 550);
   };
 
+  const tabBtnStyle = (active: boolean) => ({
+    backgroundColor: active ? 'var(--status-dado-declarado)' : 'transparent',
+    color: active ? 'var(--color-bg)' : 'var(--color-text-secondary)',
+  });
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-      
+    <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+      <AmbientGlow />
+
       {/* Header */}
-      <div className="border-b border-slate-200 dark:border-slate-800 pb-5">
-        <div className="flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider mb-1">
-          <Radio className="w-4 h-4 text-amber-600 dark:text-amber-400 animate-pulse" />
+      <div className="border-b pb-5" style={{ borderColor: 'var(--color-card-border)' }}>
+        <div className="flex items-center gap-2 text-[11px] font-mono font-medium uppercase tracking-[0.2em] mb-1" style={{ color: 'var(--status-atencao)' }}>
+          <Radio className="w-4 h-4 animate-pulse" />
           Descoberta Ativa & Inteligência Técnica
         </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0B1F33] dark:text-white">
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>
           Radar de Domínios, Clones e Bloqueios
         </h1>
-        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">
+        <p className="text-xs sm:text-sm mt-1 max-w-2xl" style={{ color: 'var(--color-text-secondary)' }}>
           Monitoramento contínuo de domínios sem outorga, tentativas de clonagem de marcas autorizadas e ordens de bloqueio da Anatel.
         </p>
       </div>
 
-      {/* Interactive Probe Tool (Sonda Técnica de Domínio) */}
-      <div className="bg-white dark:bg-[#0D1B2A] border-2 border-slate-200 dark:border-slate-800 rounded-lg p-5 sm:p-6 shadow-xs transition-colors">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 flex-wrap gap-2">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 gap-4">
+        <KpiCard
+          label="Registros no radar"
+          value={cloneAndLookalikes.length + blockedEntities.length}
+          helper="Detectados e listas Anatel"
+          accent="var(--status-nao-autorizada)"
+        />
+        <KpiCard
+          label="Online agora"
+          value={onlineLookalikes}
+          helper="Lookalikes acessíveis neste momento"
+          accent="var(--status-atencao)"
+        />
+      </div>
+
+      {/* Critério de neutralidade */}
+      <GlassCard className="p-4 text-xs">
+        <strong style={{ color: 'var(--color-text-primary)' }}>Critério de neutralidade: </strong>
+        <span style={{ color: 'var(--color-text-secondary)' }}>
+          "Não consta nas listas de autorização" é uma observação factual sobre as listas públicas na data indicada. Não é juízo de valor nem parecer jurídico.
+        </span>
+      </GlassCard>
+
+      {/* Interactive Probe Tool */}
+      <GlassCard className="p-5 sm:p-6">
+        <div className="flex items-center justify-between pb-3 border-b flex-wrap gap-2" style={{ borderColor: 'var(--color-card-border)' }}>
           <div>
-            <h2 className="text-base font-bold text-[#0B1F33] dark:text-white flex items-center gap-2">
-              <Globe className="w-4 h-4 text-[#1F5FD1] dark:text-sky-400" />
+            <h2 className="text-base font-semibold flex items-center gap-2" style={{ color: 'var(--color-text-primary)' }}>
+              <Globe className="w-4 h-4" style={{ color: 'var(--status-dado-declarado)' }} />
               Sonda Técnica de Domínio em Tempo Real
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
               Digite qualquer endereço web para verificar DNS, autorização SPA/MF e indícios de clone
             </p>
           </div>
-          <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+          <span className="text-[11px] font-mono px-2 py-0.5 rounded" style={{ backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--color-text-tertiary)' }}>
             Motor: Radar Engine v2.6
           </span>
         </div>
@@ -165,11 +192,13 @@ export const RadarView: React.FC<RadarViewProps> = ({
             value={probeInput}
             onChange={(e) => setProbeInput(e.target.value)}
             placeholder="Ex: betano.bet.br, betano-app-bonus.xyz ou fortunebet777.fun"
-            className="flex-1 px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#081320] text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded font-mono focus:outline-none focus:border-[#1F5FD1]"
+            className="flex-1 px-3 py-2 text-sm rounded font-mono focus:outline-none border bg-transparent"
+            style={{ borderColor: 'var(--color-card-border)', color: 'var(--color-text-primary)' }}
           />
           <button
             type="submit"
-            className="px-5 py-2 bg-[#0B1F33] dark:bg-[#1F5FD1] hover:bg-slate-800 dark:hover:bg-[#184ebd] text-white font-semibold text-xs sm:text-sm rounded transition-colors cursor-pointer flex items-center justify-center gap-2"
+            className="px-5 py-2 font-semibold text-xs sm:text-sm rounded transition-colors cursor-pointer flex items-center justify-center gap-2"
+            style={{ backgroundColor: 'var(--status-dado-declarado)', color: 'var(--color-bg)' }}
           >
             {probeResult?.loading ? (
               <RefreshCw className="w-4 h-4 animate-spin" />
@@ -180,74 +209,66 @@ export const RadarView: React.FC<RadarViewProps> = ({
           </button>
         </form>
 
-        {/* Probe Result Display */}
         {probeResult && (
-          <div className="mt-4 p-4 rounded border bg-[#F6F8FB] dark:bg-[#081320] border-slate-200 dark:border-slate-800 text-xs space-y-3">
-            <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+          <div className="mt-4 p-4 rounded border text-xs space-y-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'var(--color-card-border)' }}>
+            <div className="flex items-center justify-between flex-wrap gap-2 border-b pb-2" style={{ borderColor: 'var(--color-card-border)' }}>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-sm font-bold text-slate-900 dark:text-white">{probeResult.host}</span>
+                <span className="font-mono text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>{probeResult.host}</span>
                 {probeResult.loading ? (
-                  <span className="text-slate-500 dark:text-slate-400 animate-pulse">Examinando...</span>
+                  <span className="animate-pulse" style={{ color: 'var(--color-text-tertiary)' }}>Examinando...</span>
                 ) : probeResult.isAuthorized ? (
-                  <span className="text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 font-semibold px-2 py-0.5 rounded text-[11px]">
+                  <span className="font-semibold px-2 py-0.5 rounded text-[11px] border" style={{ color: 'var(--status-autorizada)', borderColor: 'var(--status-autorizada)', backgroundColor: 'color-mix(in srgb, var(--status-autorizada) 10%, transparent)' }}>
                     Autorizada — nacional, SPA/MF
                   </span>
                 ) : (
-                  <span className="text-rose-800 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 font-semibold px-2 py-0.5 rounded text-[11px]">
+                  <span className="font-semibold px-2 py-0.5 rounded text-[11px] border" style={{ color: 'var(--status-nao-autorizada)', borderColor: 'var(--status-nao-autorizada)', backgroundColor: 'color-mix(in srgb, var(--status-nao-autorizada) 10%, transparent)' }}>
                     Não consta nas listas de autorização consultadas
                   </span>
                 )}
               </div>
 
               {!probeResult.loading && (
-                <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px]">
+                <span className="font-mono text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
                   Verificado em {new Date().toLocaleTimeString('pt-BR')} BRT
                 </span>
               )}
             </div>
 
             {probeResult.loading ? (
-              <div className="py-4 text-center text-slate-500 dark:text-slate-400 space-y-2">
-                <RefreshCw className="w-5 h-5 animate-spin mx-auto text-[#1F5FD1] dark:text-sky-400" />
+              <div className="py-4 text-center space-y-2" style={{ color: 'var(--color-text-tertiary)' }}>
+                <RefreshCw className="w-5 h-5 animate-spin mx-auto" style={{ color: 'var(--status-dado-declarado)' }} />
                 <p>Consultando bases oficiais da SPA/MF, Diário Oficial e servidores DNS...</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-white dark:bg-[#0D1B2A] p-2.5 rounded border border-slate-200 dark:border-slate-800">
-                  <span className="text-slate-400 dark:text-slate-500 block mb-0.5">Status DNS / IP</span>
-                  <span className="font-mono text-slate-800 dark:text-slate-200 font-medium block truncate">
-                    {probeResult.dnsStatus}
-                  </span>
-                </div>
-                <div className="bg-white dark:bg-[#0D1B2A] p-2.5 rounded border border-slate-200 dark:border-slate-800">
-                  <span className="text-slate-400 dark:text-slate-500 block mb-0.5">Certificado SSL</span>
-                  <span className="font-mono text-slate-800 dark:text-slate-200 font-medium block truncate">
-                    {probeResult.sslIssuer}
-                  </span>
-                </div>
-                <div className="bg-white dark:bg-[#0D1B2A] p-2.5 rounded border border-slate-200 dark:border-slate-800">
-                  <span className="text-slate-400 dark:text-slate-500 block mb-0.5">Roteamento ASN</span>
-                  <span className="font-mono text-slate-800 dark:text-slate-200 font-medium block truncate">
-                    {probeResult.asn}
-                  </span>
-                </div>
+                {[
+                  ['Status DNS / IP', probeResult.dnsStatus],
+                  ['Certificado SSL', probeResult.sslIssuer],
+                  ['Roteamento ASN', probeResult.asn],
+                ].map(([label, value]) => (
+                  <div key={label} className="p-2.5 rounded border" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'var(--color-card-border)' }}>
+                    <span className="block mb-0.5" style={{ color: 'var(--color-text-tertiary)' }}>{label}</span>
+                    <span className="font-mono font-medium block truncate" style={{ color: 'var(--color-text-secondary)' }}>{value}</span>
+                  </div>
+                ))}
 
-                <div className="sm:col-span-3 bg-white dark:bg-[#0D1B2A] p-3 rounded border border-slate-200 dark:border-slate-800">
-                  <span className="text-slate-500 dark:text-slate-400 font-bold block mb-1">
+                <div className="sm:col-span-3 p-3 rounded border" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'var(--color-card-border)' }}>
+                  <span className="font-bold block mb-1" style={{ color: 'var(--color-text-tertiary)' }}>
                     Parecer Técnico & Evidência Rastreável:
                   </span>
-                  <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                  <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
                     {probeResult.notes}
                   </p>
 
                   {probeResult.matchedEntity && (
-                    <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                        Registro oficial correspondente: <strong className="text-slate-800 dark:text-slate-200">{probeResult.matchedEntity.brandName}</strong>
+                    <div className="mt-2 pt-2 border-t flex items-center justify-between" style={{ borderColor: 'var(--color-card-border)' }}>
+                      <span className="text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
+                        Registro oficial correspondente: <strong style={{ color: 'var(--color-text-secondary)' }}>{probeResult.matchedEntity.brandName}</strong>
                       </span>
                       <button
                         onClick={() => onViewDetails(probeResult.matchedEntity!)}
-                        className="text-[#1F5FD1] dark:text-sky-400 hover:underline font-semibold text-xs cursor-pointer"
+                        className="hover:underline font-semibold text-xs cursor-pointer"
+                        style={{ color: 'var(--status-dado-declarado)' }}
                       >
                         Abrir Ficha de Evidência Completa →
                       </button>
@@ -258,52 +279,47 @@ export const RadarView: React.FC<RadarViewProps> = ({
             )}
           </div>
         )}
-      </div>
+      </GlassCard>
 
       {/* Tabs navigation */}
-      <div className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-800 pb-2">
+      <div className="flex items-center gap-1 border-b pb-2" style={{ borderColor: 'var(--color-card-border)' }}>
         <button
           onClick={() => setActiveTab('clones')}
-          className={`px-3 py-1.5 text-xs font-semibold rounded cursor-pointer transition-colors ${
-            activeTab === 'clones' ? 'bg-[#0B1F33] dark:bg-[#1F5FD1] text-white' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
+          className="px-3 py-1.5 text-xs font-semibold rounded cursor-pointer transition-colors"
+          style={tabBtnStyle(activeTab === 'clones')}
         >
           Possíveis Clones e Lookalikes ({cloneAndLookalikes.length})
         </button>
         <button
           onClick={() => setActiveTab('bloqueadas')}
-          className={`px-3 py-1.5 text-xs font-semibold rounded cursor-pointer transition-colors ${
-            activeTab === 'bloqueadas' ? 'bg-[#0B1F33] dark:bg-[#1F5FD1] text-white' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
+          className="px-3 py-1.5 text-xs font-semibold rounded cursor-pointer transition-colors"
+          style={tabBtnStyle(activeTab === 'bloqueadas')}
         >
           Domínios com Bloqueio Publicado ({blockedEntities.length})
         </button>
       </div>
 
-      {/* Comparison: Genuine vs Clone Case Study */}
       {activeTab === 'clones' && (
         <div className="space-y-6">
-          <div className="bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-5">
-            <h3 className="text-sm font-bold text-amber-950 dark:text-amber-300 mb-2 flex items-center gap-1.5">
-              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+          <GlassCard className="p-5">
+            <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5" style={{ color: 'var(--status-atencao)' }}>
+              <AlertTriangle className="w-4 h-4" />
               Como reconhecer um domínio legítimo vs. clone / lookalike
             </h3>
-            <p className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed mb-4">
+            <p className="text-xs leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
               A regulação brasileira exige que todas as casas com autorização nacional utilizem exclusivamente o domínio de topo restrito <strong className="font-mono">.bet.br</strong>. Sites que utilizam terminações genéricas (.xyz, .online, .top, .vip) com o nome de marcas consagradas devem ser inspecionados com máximo rigor.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              
-              {/* Casa Legítima */}
-              <div className="bg-white dark:bg-[#0D1B2A] p-4 rounded border border-emerald-200 dark:border-emerald-900/50 shadow-xs">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2 mb-2">
-                  <span className="text-xs font-bold text-emerald-800 dark:text-emerald-400 uppercase">Domínio Oficial e Autorizado</span>
-                  <span className="font-mono text-xs text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded">.bet.br</span>
+              <div className="p-4 rounded border" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'color-mix(in srgb, var(--status-autorizada) 35%, transparent)' }}>
+                <div className="flex items-center justify-between border-b pb-2 mb-2" style={{ borderColor: 'var(--color-card-border)' }}>
+                  <span className="text-xs font-bold uppercase" style={{ color: 'var(--status-autorizada)' }}>Domínio Oficial e Autorizado</span>
+                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded" style={{ color: 'var(--status-autorizada)', backgroundColor: 'color-mix(in srgb, var(--status-autorizada) 12%, transparent)' }}>.bet.br</span>
                 </div>
-                <div className="font-mono text-base font-bold text-slate-900 dark:text-white mb-1">
+                <div className="font-mono text-base font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>
                   betano.bet.br
                 </div>
-                <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-1">
+                <ul className="text-xs space-y-1" style={{ color: 'var(--color-text-secondary)' }}>
                   <li>• Titular: Kaizen Gaming Brasil Ltda.</li>
                   <li>• CNPJ: 41.693.684/0001-44 (homologado na SPA/MF)</li>
                   <li>• Processo SIGAP: nº 0002/2024</li>
@@ -311,28 +327,26 @@ export const RadarView: React.FC<RadarViewProps> = ({
                 </ul>
               </div>
 
-              {/* Clone Suspeito */}
-              <div className="bg-white dark:bg-[#0D1B2A] p-4 rounded border border-rose-200 dark:border-rose-900/50 shadow-xs">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2 mb-2">
-                  <span className="text-xs font-bold text-rose-800 dark:text-rose-400 uppercase">Possível Clone Detectado</span>
-                  <span className="font-mono text-xs text-rose-700 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded">.xyz</span>
+              <div className="p-4 rounded border" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'color-mix(in srgb, var(--status-nao-autorizada) 35%, transparent)' }}>
+                <div className="flex items-center justify-between border-b pb-2 mb-2" style={{ borderColor: 'var(--color-card-border)' }}>
+                  <span className="text-xs font-bold uppercase" style={{ color: 'var(--status-nao-autorizada)' }}>Possível Clone Detectado</span>
+                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded" style={{ color: 'var(--status-nao-autorizada)', backgroundColor: 'color-mix(in srgb, var(--status-nao-autorizada) 12%, transparent)' }}>.xyz</span>
                 </div>
-                <div className="font-mono text-base font-bold text-rose-900 dark:text-rose-300 mb-1">
+                <div className="font-mono text-base font-bold mb-1" style={{ color: 'var(--status-nao-autorizada)' }}>
                   betano-app-bonus.xyz
                 </div>
-                <ul className="text-xs text-rose-900 dark:text-rose-300 space-y-1">
+                <ul className="text-xs space-y-1" style={{ color: 'var(--color-text-secondary)' }}>
                   <li>• Titular: Desconhecido (WHOIS com proxy)</li>
                   <li>• CNPJ: Não informado ou inexistente</li>
                   <li>• Processo SIGAP: Sem registro</li>
                   <li>• IP: Servidor em Moscou/Rússia sem outorga</li>
                 </ul>
               </div>
-
             </div>
-          </div>
+          </GlassCard>
 
           <div className="space-y-4">
-            <h3 className="text-base font-bold text-[#0B1F33] dark:text-white">
+            <h3 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
               Detecções do Radar Ativo
             </h3>
             {cloneAndLookalikes.map((item) => (
@@ -349,13 +363,14 @@ export const RadarView: React.FC<RadarViewProps> = ({
         </div>
       )}
 
-      {/* Blocked tab */}
       {activeTab === 'bloqueadas' && (
         <div className="space-y-4">
-          <div className="p-4 bg-slate-50 dark:bg-[#081320] border border-slate-200 dark:border-slate-800 rounded text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-            <strong className="font-semibold text-slate-900 dark:text-white">Sobre os bloqueios da Anatel: </strong>
-            A Secretaria de Prêmios e Apostas (SPA/MF) envia periodicamente notificações com listas de domínios irregulares à Agência Nacional de Telecomunicações (Anatel), que por sua vez notifica mais de 20 mil provedores de acesso à internet em todo o território nacional para execução do bloqueio no nível de DNS/IP.
-          </div>
+          <GlassCard className="p-4 text-xs leading-relaxed" >
+            <strong className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>Sobre os bloqueios da Anatel: </strong>
+            <span style={{ color: 'var(--color-text-secondary)' }}>
+              A Secretaria de Prêmios e Apostas (SPA/MF) envia periodicamente notificações com listas de domínios irregulares à Agência Nacional de Telecomunicações (Anatel), que por sua vez notifica mais de 20 mil provedores de acesso à internet em todo o território nacional para execução do bloqueio no nível de DNS/IP.
+            </span>
+          </GlassCard>
 
           {blockedEntities.map((item) => (
             <BetLegalCard

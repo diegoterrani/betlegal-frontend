@@ -1,0 +1,17 @@
+/* Bet Legal — tokens de marca */
+:root{
+  --bl-bg:#0c0c0d;          /* fundo */
+  --bl-surface:#17171a;     /* cards */
+  --bl-line:#2a2a2e;
+  --bl-ink:#fafafa;         /* texto e "mercado legal" */
+  --bl-muted:#8e8e92;
+  --bl-ilegal:#f59e0b;      /* mercado ilegal / sites piratas: cor protagonista */
+  --bl-alerta:#f87171;      /* MP, proibição, takedown, CTA de denúncia */
+  --bl-font-sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --bl-font-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+:root[data-theme="light"]{
+  --bl-bg:#f5f5f3; --bl-surface:#ffffff; --bl-line:#e2e2e0;
+  --bl-ink:#141416; --bl-muted:#6b6b70;
+  --bl-ilegal:#d97706; --bl-alerta:#dc2626;
+}

@@ -56,11 +56,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Update meta theme-color if present
       const metaThemeColor = document.querySelector('meta[name="theme-color"]');
       if (metaThemeColor) {
-        metaThemeColor.setAttribute('content', isDark ? '#081320' : '#0B1F33');
+        metaThemeColor.setAttribute('content', isDark ? '#0A0A0A' : '#F5F1E7');
       } else {
         const meta = document.createElement('meta');
         meta.name = 'theme-color';
-        meta.content = isDark ? '#081320' : '#0B1F33';
+        meta.content = isDark ? '#0A0A0A' : '#F5F1E7';
         document.head.appendChild(meta);
       }
     };

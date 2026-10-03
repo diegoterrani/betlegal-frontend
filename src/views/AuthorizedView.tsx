@@ -1,15 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { BetEntity } from '../types';
 import { BetLegalCard } from '../components/BetLegalCard';
-import { STATUS_MAP } from '../utils/statusMapping';
-import { 
-  CheckCircle2, 
-  ExternalLink, 
-  Download, 
-  Building2, 
-  FileCheck, 
-  Scale, 
-  LayoutList, 
+import { GlassCard } from '../components/ui/GlassCard';
+import { AmbientGlow } from '../components/ui/AmbientGlow';
+import {
+  CheckCircle2,
+  Download,
+  LayoutList,
   LayoutGrid,
   Search
 } from 'lucide-react';
@@ -33,10 +30,9 @@ export const AuthorizedView: React.FC<AuthorizedViewProps> = ({
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
   const [filterText, setFilterText] = useState('');
 
-  // Filter positive list only (National, State, Judicial)
-  const authorizedEntities = entities.filter(e => 
-    e.status === 'AUTORIZADA_NACIONAL' || 
-    e.status === 'AUTORIZADA_ESTADUAL' || 
+  const authorizedEntities = entities.filter(e =>
+    e.status === 'AUTORIZADA_NACIONAL' ||
+    e.status === 'AUTORIZADA_ESTADUAL' ||
     e.status === 'DECISAO_JUDICIAL'
   );
 
@@ -57,98 +53,134 @@ export const AuthorizedView: React.FC<AuthorizedViewProps> = ({
     return true;
   });
 
+  const composition = useMemo(() => {
+    const federal = authorizedEntities.filter(e => e.sphere === 'federal').length;
+    const estadual = authorizedEntities.filter(e => e.sphere === 'estadual').length;
+    const judicial = authorizedEntities.filter(e => e.sphere === 'judicial').length;
+    const total = federal + estadual + judicial || 1;
+    return { federal, estadual, judicial, total };
+  }, [authorizedEntities]);
+
+  const handleExportCSV = () => {
+    const headers = ['Marca', 'Razao_Social', 'CNPJ', 'Esfera', 'Protocolo', 'Dominio'];
+    const rows = displayedEntities.map(e => [
+      `"${e.brandName}"`, `"${e.legalName}"`, `"${e.cnpj}"`, `"${e.sphere}"`,
+      `"${e.sigapProtocol || e.portariaNumber || ''}"`, `"${e.domains[0]?.host || ''}"`,
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const link = document.createElement('a');
+    link.setAttribute('href', encodeURI(csvContent));
+    link.setAttribute('download', `betlegal_autorizadas_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const tabBtnStyle = (active: boolean) => ({
+    backgroundColor: active ? 'var(--status-dado-declarado)' : 'transparent',
+    color: active ? 'var(--color-bg)' : 'var(--color-text-secondary)',
+  });
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-      
+    <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+      <AmbientGlow />
+
       {/* Title & Trust Header */}
-      <div className="border-b border-slate-200 dark:border-slate-800 pb-5">
+      <div className="border-b pb-5" style={{ borderColor: 'var(--color-card-border)' }}>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider mb-1">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <div className="flex items-center gap-2 text-[11px] font-mono font-medium uppercase tracking-[0.2em] mb-1" style={{ color: 'var(--status-autorizada)' }}>
+              <CheckCircle2 className="w-4 h-4" />
               Lista Positiva Vigente
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0B1F33] dark:text-white">
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>
               Casas de Apostas com Autorização Publicada
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">
+            <p className="text-xs sm:text-sm mt-1 max-w-2xl" style={{ color: 'var(--color-text-secondary)' }}>
               Relação de pessoas jurídicas outorgadas pela Secretaria de Prêmios e Apostas (SPA/MF), loterias estaduais credenciadas ou decisão judicial em vigor.
             </p>
           </div>
 
-          <div className="text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-[#0D1B2A] border border-slate-200 dark:border-slate-800 rounded p-3">
-            <div>Fonte primária: <strong className="text-slate-800 dark:text-slate-200">SPA/MF e DOU</strong></div>
-            <div>Janela de atualização: <span className="font-mono text-slate-700 dark:text-slate-300">Hoje 12:00 BRT</span></div>
-          </div>
+          <GlassCard className="p-3 text-xs shrink-0" >
+            <div style={{ color: 'var(--color-text-secondary)' }}>Fonte primária: <strong style={{ color: 'var(--color-text-primary)' }}>SPA/MF e DOU</strong></div>
+            <div style={{ color: 'var(--color-text-secondary)' }}>Janela de atualização: <span className="font-mono" style={{ color: 'var(--color-text-primary)' }}>Hoje 12:00 BRT</span></div>
+          </GlassCard>
         </div>
       </div>
 
+      {/* Composição */}
+      <GlassCard className="p-5 sm:p-6">
+        <div className="text-[11px] font-mono font-medium uppercase tracking-[0.2em] mb-3" style={{ color: 'var(--color-text-tertiary)' }}>
+          Composição
+        </div>
+        <div className="h-2.5 rounded-full overflow-hidden flex mb-4" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
+          <div style={{ width: `${(composition.federal / composition.total) * 100}%`, backgroundColor: 'var(--status-autorizada)' }} />
+          <div style={{ width: `${(composition.estadual / composition.total) * 100}%`, backgroundColor: 'var(--status-dado-declarado)' }} />
+          <div style={{ width: `${(composition.judicial / composition.total) * 100}%`, backgroundColor: 'var(--status-decisao-judicial)' }} />
+        </div>
+        <div className="grid grid-cols-3 gap-4 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: 'var(--status-autorizada)' }} />
+            <span style={{ color: 'var(--color-text-secondary)' }}>Nacional / SPA: <strong style={{ color: 'var(--color-text-primary)' }}>{composition.federal}</strong></span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: 'var(--status-dado-declarado)' }} />
+            <span style={{ color: 'var(--color-text-secondary)' }}>Estaduais: <strong style={{ color: 'var(--color-text-primary)' }}>{composition.estadual}</strong></span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: 'var(--status-decisao-judicial)' }} />
+            <span style={{ color: 'var(--color-text-secondary)' }}>Decisão Judicial: <strong style={{ color: 'var(--color-text-primary)' }}>{composition.judicial}</strong></span>
+          </div>
+        </div>
+      </GlassCard>
+
       {/* Navigation tabs & controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-[#0D1B2A] p-3 border border-slate-200 dark:border-slate-800 rounded-lg transition-colors">
-        
-        {/* Segmented Tab Buttons (Clean, without pill candy) */}
+      <GlassCard className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3">
         <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
-          <button
-            onClick={() => setActiveTab('all')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors whitespace-nowrap cursor-pointer ${
-              activeTab === 'all'
-                ? 'bg-[#0B1F33] dark:bg-[#1F5FD1] text-white'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            Todas ({authorizedEntities.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('federal')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors whitespace-nowrap cursor-pointer ${
-              activeTab === 'federal'
-                ? 'bg-[#0B1F33] dark:bg-[#1F5FD1] text-white'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            Nacional / SPA ({authorizedEntities.filter(e => e.sphere === 'federal').length})
-          </button>
-          <button
-            onClick={() => setActiveTab('estadual')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors whitespace-nowrap cursor-pointer ${
-              activeTab === 'estadual'
-                ? 'bg-[#0B1F33] dark:bg-[#1F5FD1] text-white'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            Estaduais ({authorizedEntities.filter(e => e.sphere === 'estadual').length})
-          </button>
-          <button
-            onClick={() => setActiveTab('judicial')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors whitespace-nowrap cursor-pointer ${
-              activeTab === 'judicial'
-                ? 'bg-[#0B1F33] dark:bg-[#1F5FD1] text-white'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            Decisão Judicial ({authorizedEntities.filter(e => e.sphere === 'judicial').length})
-          </button>
+          {([
+            ['all', `Todas (${authorizedEntities.length})`],
+            ['federal', `Nacional / SPA (${composition.federal})`],
+            ['estadual', `Estaduais (${composition.estadual})`],
+            ['judicial', `Decisão Judicial (${composition.judicial})`],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className="px-3 py-1.5 text-xs font-semibold rounded transition-colors whitespace-nowrap cursor-pointer"
+              style={tabBtnStyle(activeTab === key)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
-        {/* Search within list & View mode switch */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1 sm:w-56">
-            <Search className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-tertiary)' }} />
             <input
               type="text"
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}
               placeholder="Filtrar nesta lista..."
-              className="w-full text-xs pl-8 pr-2.5 py-1.5 border border-slate-300 dark:border-slate-700 rounded focus:outline-none focus:border-[#1F5FD1] bg-slate-50 dark:bg-[#081320] text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              className="w-full text-xs pl-8 pr-2.5 py-1.5 rounded border focus:outline-none bg-transparent"
+              style={{ borderColor: 'var(--color-card-border)', color: 'var(--color-text-primary)' }}
             />
           </div>
 
-          <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded p-0.5 bg-slate-50 dark:bg-[#081320] shrink-0">
+          <button
+            onClick={handleExportCSV}
+            className="p-1.5 rounded border transition-colors cursor-pointer hover:bg-white/5 shrink-0"
+            style={{ borderColor: 'var(--color-card-border)', color: 'var(--color-text-secondary)' }}
+            title="Exportar CSV"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+
+          <div className="flex items-center rounded p-0.5 shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}>
             <button
               onClick={() => setViewMode('table')}
-              className={`p-1.5 rounded transition-colors cursor-pointer ${
-                viewMode === 'table' ? 'bg-white dark:bg-[#0D1B2A] shadow-xs text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
+              className="p-1.5 rounded transition-colors cursor-pointer"
+              style={{ backgroundColor: viewMode === 'table' ? 'rgba(255,255,255,0.08)' : 'transparent', color: viewMode === 'table' ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)' }}
               title="Visualização em tabela cadastral"
               aria-label="Tabela"
             >
@@ -156,9 +188,8 @@ export const AuthorizedView: React.FC<AuthorizedViewProps> = ({
             </button>
             <button
               onClick={() => setViewMode('cards')}
-              className={`p-1.5 rounded transition-colors cursor-pointer ${
-                viewMode === 'cards' ? 'bg-white dark:bg-[#0D1B2A] shadow-xs text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
+              className="p-1.5 rounded transition-colors cursor-pointer"
+              style={{ backgroundColor: viewMode === 'cards' ? 'rgba(255,255,255,0.08)' : 'transparent', color: viewMode === 'cards' ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)' }}
               title="Visualização em BetLegal Cards"
               aria-label="Cards"
             >
@@ -166,16 +197,15 @@ export const AuthorizedView: React.FC<AuthorizedViewProps> = ({
             </button>
           </div>
         </div>
-
-      </div>
+      </GlassCard>
 
       {/* Content display */}
       {viewMode === 'table' ? (
-        <div className="bg-white dark:bg-[#0D1B2A] border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden shadow-xs transition-colors">
+        <GlassCard className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#0B1F33] dark:bg-[#081320] text-white border-b border-slate-800 font-semibold tracking-wide">
-                <tr>
+              <thead style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--color-text-secondary)' }} className="font-semibold tracking-wide border-b" >
+                <tr style={{ borderColor: 'var(--color-card-border)' }}>
                   <th className="py-3 px-4">Marca Comercial</th>
                   <th className="py-3 px-4">Razão Social & CNPJ</th>
                   <th className="py-3 px-4">Esfera / Órgão</th>
@@ -184,42 +214,48 @@ export const AuthorizedView: React.FC<AuthorizedViewProps> = ({
                   <th className="py-3 px-4 text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+              <tbody>
                 {displayedEntities.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-[#13253B] transition-colors">
-                    <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
+                  <tr
+                    key={item.id}
+                    className="transition-colors hover:bg-white/[0.03] border-b"
+                    style={{ borderColor: 'var(--color-card-border)' }}
+                  >
+                    <td className="py-3 px-4 font-semibold" style={{ color: 'var(--color-text-primary)' }}>
                       <button
                         onClick={() => onViewDetails(item)}
-                        className="hover:text-[#1F5FD1] dark:hover:text-sky-400 text-left cursor-pointer"
+                        className="text-left cursor-pointer hover:underline"
                       >
                         {item.brandName}
                       </button>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-medium text-slate-900 dark:text-slate-100 line-clamp-1">{item.legalName}</div>
-                      <div className="font-mono text-slate-500 dark:text-slate-400 text-[11px] mt-0.5">{item.cnpj}</div>
+                      <div className="font-medium line-clamp-1" style={{ color: 'var(--color-text-primary)' }}>{item.legalName}</div>
+                      <div className="font-mono text-[11px] mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>{item.cnpj}</div>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      <span className="font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
                         {item.sphere === 'federal' ? 'Nacional (SPA/MF)' : item.stateJurisdiction || item.sphere}
                       </span>
                     </td>
-                    <td className="py-3 px-4 font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                    <td className="py-3 px-4 font-mono text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
                       {item.sigapProtocol ? `SIGAP ${item.sigapProtocol}` : item.portariaNumber?.slice(0, 30) || '—'}
                     </td>
-                    <td className="py-3 px-4 font-mono text-slate-800 dark:text-slate-200 font-semibold">
+                    <td className="py-3 px-4 font-mono font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
                       {item.domains[0]?.host || '—'}
                     </td>
-                    <td className="py-3 px-4 text-right space-x-2">
+                    <td className="py-3 px-4 text-right space-x-3">
                       <button
                         onClick={() => onViewDetails(item)}
-                        className="text-[#1F5FD1] dark:text-sky-400 hover:underline font-semibold cursor-pointer"
+                        className="hover:underline font-semibold cursor-pointer"
+                        style={{ color: 'var(--status-dado-declarado)' }}
                       >
                         Ficha
                       </button>
                       <button
                         onClick={() => onShare(item, item.domains[0]?.host || '')}
-                        className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                        className="cursor-pointer hover:underline"
+                        style={{ color: 'var(--color-text-tertiary)' }}
                       >
                         Compartilhar
                       </button>
@@ -229,7 +265,7 @@ export const AuthorizedView: React.FC<AuthorizedViewProps> = ({
               </tbody>
             </table>
           </div>
-        </div>
+        </GlassCard>
       ) : (
         <div className="space-y-4">
           {displayedEntities.map((item) => (
@@ -245,13 +281,13 @@ export const AuthorizedView: React.FC<AuthorizedViewProps> = ({
         </div>
       )}
 
-      {/* Regulatory Rule Note from Page 17 & Page 25 */}
-      <div className="p-4 bg-[#F6F8FB] dark:bg-[#081320] border border-slate-200 dark:border-slate-800 rounded text-xs text-slate-600 dark:text-slate-400 space-y-1 transition-colors">
-        <div className="font-bold text-slate-800 dark:text-slate-200">Regra Editorial BetLegal nº 2:</div>
-        <p>
+      {/* Regulatory Rule Note */}
+      <GlassCard className="p-4 text-xs space-y-1">
+        <div className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>Regra Editorial BetLegal nº 2:</div>
+        <p style={{ color: 'var(--color-text-secondary)' }}>
           <em>"Nunca chamar de 'segura' apenas por estar autorizada."</em> A autorização regulatória atesta o cumprimento dos requisitos legais de funcionamento perante o Ministério da Fazenda ou estado outorgante. Não equivale a selo de invulnerabilidade ou garantia contra perdas financeiras decorrentes de apostas.
         </p>
-      </div>
+      </GlassCard>
 
     </div>
   );
