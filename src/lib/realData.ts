@@ -253,7 +253,10 @@ export async function fetchRealEntities(sampleLimit = 900): Promise<BetEntity[] 
               ipAddress: d.hosting_ip || undefined,
               asn: d.hosting_asn ? `AS${d.hosting_asn}${d.hosting_asn_org ? ` (${d.hosting_asn_org})` : ''}` : undefined,
               hostingProvider: d.hosting_asn_org || undefined,
+              hostingCountry: d.hosting_cc || undefined,
               detectedAt: d.first_seen_at ? `${formatDateBR(d.first_seen_at)} ${formatTimeBR(d.first_seen_at)}` : undefined,
+              registeredAt: d.registered_at ? formatDateBR(d.registered_at) : undefined,
+              firstCertAt: d.first_cert_at ? formatDateBR(d.first_cert_at) : undefined,
             },
           ],
           evidenceSummary: grant?.portaria

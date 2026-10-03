@@ -34,8 +34,11 @@ export interface DomainInfo {
   ipAddress?: string;
   asn?: string;
   hostingProvider?: string;
+  hostingCountry?: string;
   anatelBlockOrder?: string;
   detectedAt?: string;
+  registeredAt?: string;
+  firstCertAt?: string;
 }
 
 export interface BrandReputation {
