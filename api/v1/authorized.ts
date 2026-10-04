@@ -1,6 +1,6 @@
 // Réplica de apps/web/app/api/v1/authorized/route.ts (prod).
-import { getSupabaseServer, fetchAllRows } from '../_lib/supabaseServer';
-import { ok, fail, domainRecord } from '../_lib/contract';
+import { getSupabaseServer, fetchAllRows } from '../_lib/supabaseServer.js';
+import { ok, fail, domainRecord } from '../_lib/contract.js';
 
 const AUTHORIZED_STATUSES = ['AUTORIZADA_NACIONAL', 'AUTORIZADA_ESTADUAL', 'DECISAO_JUDICIAL', 'REQUERIMENTO_EM_ANALISE'];
 const KIND_TO_FIELD: Record<string, string> = { NACIONAL: 'NACIONAL', JUDICIAL: 'JUDICIAL', ESTADUAL: 'ESTADUAL', REQUERIMENTO: 'REQUERIMENTO' };

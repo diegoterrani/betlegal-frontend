@@ -1,8 +1,8 @@
 // Réplica de apps/web/app/api/v1/changes/route.ts (prod). listChanges() em prod lê de
 // status_event JOIN domain JOIN brand — tabelas base já liberadas por anon_read_status_event /
 // anon_read_domain_published / anon_read_brand, sem precisar de view nova.
-import { getSupabaseServer, fetchAllRows } from '../_lib/supabaseServer';
-import { ok, fail, STATUS_LABEL, humanizeNote, changeType } from '../_lib/contract';
+import { getSupabaseServer, fetchAllRows } from '../_lib/supabaseServer.js';
+import { ok, fail, STATUS_LABEL, humanizeNote, changeType } from '../_lib/contract.js';
 
 export default async function handler(req: any, res: any) {
   const client = getSupabaseServer();

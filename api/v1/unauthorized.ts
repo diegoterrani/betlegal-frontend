@@ -1,6 +1,6 @@
 // Réplica de apps/web/app/api/v1/unauthorized/route.ts (prod).
-import { getSupabaseServer, fetchAllRows } from '../_lib/supabaseServer';
-import { ok, fail, domainRecord } from '../_lib/contract';
+import { getSupabaseServer, fetchAllRows } from '../_lib/supabaseServer.js';
+import { ok, fail, domainRecord } from '../_lib/contract.js';
 
 const ALLOWED_STATUS = ['NAO_AUTORIZADA_DETECTADA', 'BLOQUEADA_ANATEL', 'SUSPENSA_REVOGADA'];
 const DEFAULT_STATUSES = ALLOWED_STATUS;

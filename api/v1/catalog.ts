@@ -2,8 +2,8 @@
 // marcas, na mesma forma (domainRecord/brandRecords). Lê de public_domain_view_published e
 // brand_ranking (views reais, liberadas por GRANT dedicado — ver migração
 // anon_read_public_domain_view_published_and_brand_ranking) via a mesma chave anon do projeto.
-import { getSupabaseServer, fetchAllRows } from '../_lib/supabaseServer';
-import { ok, fail, domainRecord, brandRecords } from '../_lib/contract';
+import { getSupabaseServer, fetchAllRows } from '../_lib/supabaseServer.js';
+import { ok, fail, domainRecord, brandRecords } from '../_lib/contract.js';
 
 export default async function handler(req: any, res: any) {
   const client = getSupabaseServer();
