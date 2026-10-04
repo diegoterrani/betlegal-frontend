@@ -69,6 +69,7 @@ export default async function handler(req: any, res: any) {
       })),
     });
   } catch (err) {
+    console.error('[api/v1/changes]', err);
     fail(res, 500, 'Não foi possível buscar as mudanças agora.');
   }
 }

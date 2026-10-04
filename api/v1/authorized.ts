@@ -36,6 +36,7 @@ export default async function handler(req: any, res: any) {
 
     ok(res, { total, page, page_size: pageSize, results: rows.map(domainRecord) });
   } catch (err) {
+    console.error('[api/v1/authorized]', err);
     fail(res, 500, 'Não foi possível buscar as autorizadas agora.');
   }
 }

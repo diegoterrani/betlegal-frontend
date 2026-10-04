@@ -26,6 +26,7 @@ export default async function handler(req: any, res: any) {
     const brands = brandRecords(domains, rankingRows);
     ok(res, { domains, brands }, 60);
   } catch (err) {
+    console.error('[api/v1/catalog]', err);
     fail(res, 500, 'Não foi possível montar o catálogo agora.');
   }
 }
