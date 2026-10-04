@@ -1,11 +1,11 @@
 // Réplica de apps/web/app/api/v1/unauthorized/route.ts (prod).
-const { getSupabaseServer, fetchAllRows } = require('../_lib/supabaseServer');
-const { ok, fail, domainRecord } = require('../_lib/contract');
+import { getSupabaseServer, fetchAllRows } from '../_lib/supabaseServer';
+import { ok, fail, domainRecord } from '../_lib/contract';
 
 const ALLOWED_STATUS = ['NAO_AUTORIZADA_DETECTADA', 'BLOQUEADA_ANATEL', 'SUSPENSA_REVOGADA'];
 const DEFAULT_STATUSES = ALLOWED_STATUS;
 
-module.exports = async function handler(req: any, res: any) {
+export default async function handler(req: any, res: any) {
   const client = getSupabaseServer();
   if (!client) { fail(res, 503, 'Supabase não configurado neste ambiente.'); return; }
 
@@ -46,4 +46,4 @@ module.exports = async function handler(req: any, res: any) {
   } catch (err) {
     fail(res, 500, 'Não foi possível buscar as não autorizadas agora.');
   }
-};
+}

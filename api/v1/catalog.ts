@@ -2,10 +2,10 @@
 // marcas, na mesma forma (domainRecord/brandRecords). Lê de public_domain_view_published e
 // brand_ranking (views reais, liberadas por GRANT dedicado — ver migração
 // anon_read_public_domain_view_published_and_brand_ranking) via a mesma chave anon do projeto.
-const { getSupabaseServer, fetchAllRows } = require('../_lib/supabaseServer');
-const { ok, fail, domainRecord, brandRecords } = require('../_lib/contract');
+import { getSupabaseServer, fetchAllRows } from '../_lib/supabaseServer';
+import { ok, fail, domainRecord, brandRecords } from '../_lib/contract';
 
-module.exports = async function handler(req: any, res: any) {
+export default async function handler(req: any, res: any) {
   const client = getSupabaseServer();
   if (!client) { fail(res, 503, 'Supabase não configurado neste ambiente.'); return; }
 
@@ -28,4 +28,4 @@ module.exports = async function handler(req: any, res: any) {
   } catch (err) {
     fail(res, 500, 'Não foi possível montar o catálogo agora.');
   }
-};
+}
