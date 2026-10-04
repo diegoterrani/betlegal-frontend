@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { BetEntity, ContestationTicket } from '../types';
+import React, { useMemo, useState } from 'react';
+import { BetEntity, RegulatoryStatus, ContestationTicket } from '../types';
 import {
   INITIAL_TICKETS,
   PIPELINE_QUEUES,
@@ -7,7 +7,6 @@ import {
   ADMIN_USERS,
   ADMIN_HOLDS,
   ADMIN_REVIEWS,
-  CLONE_LINKS,
   HumanReviewTask,
   HumanReviewGroup,
   AdminUserAccount,
@@ -23,10 +22,80 @@ import { useUser } from '../context/UserContext';
 
 interface AdminPanelViewProps {
   entities: BetEntity[];
+  /** Dados reais (read-only) do Supabase de prod, usados só na aba "Gestão de Clones" —
+   * o resto do painel (operação/validações) continua no mock curado, ver App.tsx. */
+  publicEntities: BetEntity[];
   onNavigate: (path: string) => void;
 }
 
 type Panel = 'operacao' | 'validacoes' | 'clones';
+
+const AUTHORIZED: RegulatoryStatus[] = ['AUTORIZADA_NACIONAL', 'AUTORIZADA_ESTADUAL', 'DECISAO_JUDICIAL'];
+
+/** Remove acentos, pontuação e espaços para comparar nomes/hosts por aproximação. */
+function normalizeForMatch(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+interface RealHouse {
+  key: string;
+  brandName: string;
+  legalName: string;
+  cnpj: string;
+  domains: { host: string }[];
+  nameCore: string;
+}
+
+/** Agrupa os domínios autorizados reais por marca (uma casa pode ter mais de um domínio
+ * autorizado). A lista real é uma linha por domínio — aqui viram uma linha por marca. */
+function buildRealHouses(publicEntities: BetEntity[]): RealHouse[] {
+  const map = new Map<string, RealHouse>();
+  for (const e of publicEntities) {
+    if (!AUTHORIZED.includes(e.status)) continue;
+    const key = e.brandName;
+    const existing = map.get(key);
+    if (existing) {
+      existing.domains.push(...e.domains.map((d) => ({ host: d.host })));
+    } else {
+      map.set(key, {
+        key,
+        brandName: e.brandName,
+        legalName: e.legalName,
+        cnpj: e.cnpj,
+        domains: e.domains.map((d) => ({ host: d.host })),
+        nameCore: normalizeForMatch(e.brandName),
+      });
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => a.brandName.localeCompare(b.brandName));
+}
+
+interface CloneCandidate {
+  entity: BetEntity;
+  host: string;
+}
+
+/** Não existe, nas 11 tabelas liberadas por RLS para a chave anon, uma coluna ou tabela que
+ * vincule um domínio clone à marca que ele imita (ver domain, domain_external_intel — sem
+ * lookalike_of nem equivalente). O vínculo aqui é uma aproximação por nome: o host ou a marca
+ * do domínio não autorizado contém o núcleo do nome da casa oficial, ou vice-versa. */
+function findCloneCandidates(house: RealHouse, nonAuthorized: BetEntity[]): CloneCandidate[] {
+  if (house.nameCore.length < 4) return [];
+  const candidates: CloneCandidate[] = [];
+  for (const e of nonAuthorized) {
+    const hostCore = normalizeForMatch(e.domains[0]?.host.split('.')[0] || '');
+    const brandCore = normalizeForMatch(e.brandName);
+    const matches =
+      (hostCore.length >= 4 && (hostCore.includes(house.nameCore) || house.nameCore.includes(hostCore))) ||
+      (brandCore.length >= 4 && (brandCore.includes(house.nameCore) || house.nameCore.includes(brandCore)));
+    if (matches) candidates.push({ entity: e, host: e.domains[0]?.host || '' });
+  }
+  return candidates;
+}
 
 const REVIEW_FILTERS: { id: HumanReviewGroup | 'todas'; label: string }[] = [
   { id: 'todas', label: 'Todas' },
@@ -42,7 +111,7 @@ function percent(value: number | null): string {
   return `${Math.round(value * 100)}%`;
 }
 
-export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ entities, onNavigate }) => {
+export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ entities, publicEntities, onNavigate }) => {
   const { user } = useUser();
   const [panel, setPanel] = useState<Panel>('operacao');
   const [tickets, setTickets] = useState<ContestationTicket[]>(INITIAL_TICKETS);
@@ -94,13 +163,26 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ entities, onNavi
 
   const visibleReviews = reviewQueue.filter((t) => reviewFilter === 'todas' || t.group === reviewFilter);
 
-  const cloneHouses = entities.filter((e) => CLONE_LINKS.some((link) => link.officialSlug === e.slug));
-  const cloneEntities = entities.filter((e) => CLONE_LINKS.some((link) => link.cloneSlug === e.slug));
+  const realHouses = useMemo(() => buildRealHouses(publicEntities), [publicEntities]);
+  const realNonAuthorized = useMemo(
+    () => publicEntities.filter((e) => !AUTHORIZED.includes(e.status)),
+    [publicEntities]
+  );
+  const houseCandidates = useMemo(
+    () => new Map(realHouses.map((h) => [h.key, findCloneCandidates(h, realNonAuthorized)])),
+    [realHouses, realNonAuthorized]
+  );
+  const totalCloneCandidates = useMemo(() => {
+    const seen = new Set<string>();
+    houseCandidates.forEach((list) => list.forEach((c) => seen.add(c.entity.id)));
+    return seen.size;
+  }, [houseCandidates]);
+
   const cloneQuery = cloneSearch.trim().toLowerCase();
-  const filteredCloneHouses = cloneHouses.filter((house) => {
+  const filteredHouses = realHouses.filter((house) => {
     if (!cloneQuery) return true;
-    const clones = CLONE_LINKS.filter((l) => l.officialSlug === house.slug).map((l) => cloneEntities.find((c) => c.slug === l.cloneSlug));
-    const haystack = [house.brandName, house.legalName, house.cnpj, ...clones.filter(Boolean).map((c) => c!.domains[0]?.host || '')].join(' ').toLowerCase();
+    const candidates = houseCandidates.get(house.key) || [];
+    const haystack = [house.brandName, house.legalName, house.cnpj, ...candidates.map((c) => c.host)].join(' ').toLowerCase();
     return haystack.includes(cloneQuery);
   });
 
@@ -539,15 +621,18 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ entities, onNavi
           <div>
             <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>Gestão de Clones</h2>
             <p className="text-xs sm:text-sm mt-1 max-w-3xl leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-              Cada casa da lista oficial aparece uma vez e reúne todos os domínios que redirecionam para o endereço autorizado ou citam o CNPJ da operadora.
-              A autorização vale para o domínio listado, não para o operador. Casa sem essa linha não significa ausência de clone: só que não há esse vínculo medido.
+              Cada casa autorizada vem dos domínios reais (Supabase de prod, leitura) e reúne seus domínios com outorga vigente.
+              Os candidatos a clone abaixo de cada casa são uma <strong>aproximação por semelhança de nome</strong> entre o host/marca
+              do domínio não autorizado e o nome da casa — não existe, nas tabelas liberadas por RLS para esta prévia, um vínculo
+              oficial medido (redirecionamento, menção de CNPJ) entre um clone e a marca que ele imita. Trate como ponto de partida
+              para investigação manual, não como confirmação.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <KpiCard label="Total de Hold" value={cloneHouses.length} />
-            <KpiCard label="Total de Domínios Autorizados" value={cloneHouses.reduce((n, h) => n + h.domains.length, 0)} accent="var(--status-autorizada)" />
-            <KpiCard label="Total de Domínios Clones" value={cloneEntities.length} accent="var(--status-nao-autorizada)" />
+            <KpiCard label="Total de Hold" value={realHouses.length} />
+            <KpiCard label="Total de Domínios Autorizados" value={realHouses.reduce((n, h) => n + h.domains.length, 0)} accent="var(--status-autorizada)" />
+            <KpiCard label="Total de Domínios Clones (candidatos)" value={totalCloneCandidates} accent="var(--status-nao-autorizada)" />
           </div>
 
           <GlassCard className="p-4">
@@ -563,16 +648,16 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ entities, onNavi
             />
           </GlassCard>
 
-          {filteredCloneHouses.length === 0 ? (
+          {filteredHouses.length === 0 ? (
             <GlassCard className="p-8 text-center text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
               Nenhuma casa encontrada com os filtros selecionados.
             </GlassCard>
           ) : (
             <div className="space-y-3">
-              {filteredCloneHouses.map((house) => {
-                const links = CLONE_LINKS.filter((l) => l.officialSlug === house.slug);
+              {filteredHouses.map((house) => {
+                const candidates = houseCandidates.get(house.key) || [];
                 return (
-                  <GlassCard key={house.slug} className="p-4 space-y-3">
+                  <GlassCard key={house.key} className="p-4 space-y-3">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
                         <p className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>{house.brandName}</p>
@@ -584,26 +669,22 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ entities, onNavi
                       </div>
                     </div>
                     <div className="space-y-2 pt-2" style={{ borderTop: '1px solid var(--color-card-border)' }}>
-                      {links.length === 0 ? (
-                        <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Nenhum vínculo direto medido.</p>
-                      ) : links.map((link) => {
-                        const clone = cloneEntities.find((c) => c.slug === link.cloneSlug);
-                        if (!clone) return null;
-                        return (
-                          <div key={link.cloneSlug} className="flex flex-wrap items-center justify-between gap-2 p-3 rounded border" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'var(--color-card-border)' }}>
-                            <div>
-                              <span className="font-mono text-xs font-semibold" style={{ color: 'var(--status-nao-autorizada)' }}>{clone.domains[0]?.host}</span>
-                              <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>{link.relationLabel}</p>
-                            </div>
-                            <span
-                              className="text-[10px] font-bold uppercase px-2 py-0.5 rounded"
-                              style={{ color: 'var(--status-nao-autorizada)', backgroundColor: 'color-mix(in srgb, var(--status-nao-autorizada) 12%, transparent)' }}
-                            >
-                              {clone.statusText}
-                            </span>
+                      {candidates.length === 0 ? (
+                        <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Nenhum candidato por semelhança de nome encontrado.</p>
+                      ) : candidates.map((candidate) => (
+                        <div key={candidate.entity.id} className="flex flex-wrap items-center justify-between gap-2 p-3 rounded border" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'var(--color-card-border)' }}>
+                          <div>
+                            <span className="font-mono text-xs font-semibold" style={{ color: 'var(--status-nao-autorizada)' }}>{candidate.host}</span>
+                            <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>Nome semelhante a "{house.brandName}" — verificar manualmente</p>
                           </div>
-                        );
-                      })}
+                          <span
+                            className="text-[10px] font-bold uppercase px-2 py-0.5 rounded"
+                            style={{ color: 'var(--status-nao-autorizada)', backgroundColor: 'color-mix(in srgb, var(--status-nao-autorizada) 12%, transparent)' }}
+                          >
+                            {candidate.entity.statusText}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </GlassCard>
                 );
