@@ -6,6 +6,7 @@ import { AmbientGlow } from '../components/ui/AmbientGlow';
 import { AuthorizationTrendChart } from '../components/AuthorizationTrendChart';
 import { DetectionBreakdownCards } from '../components/DetectionBreakdownCards';
 import { MarketGrowthChart } from '../components/MarketGrowthChart';
+import { DatesNotice } from '../components/DatesNotice';
 import { BetLegalLogo } from '../components/brand/BetLegalBrand';
 import { useTheme } from '../context/ThemeContext';
 import {
@@ -53,6 +54,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   return (
     <div className="relative space-y-16 py-6 sm:py-10">
       <AmbientGlow />
+      <DatesNotice onNavigate={onNavigate} />
 
       {/* 1. HERO */}
       <section className="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-6 pt-4 sm:pt-8">

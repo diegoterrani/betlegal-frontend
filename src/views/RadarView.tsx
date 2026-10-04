@@ -1,9 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { BetEntity, LivenessStatus, RegulatoryStatus } from '../types';
 import { STATUS_MAP, LIVENESS_MAP } from '../utils/statusMapping';
+import { fetchUnauthorizedReach, UnauthorizedReach } from '../lib/realData';
 import { GlassCard } from '../components/ui/GlassCard';
 import { AmbientGlow } from '../components/ui/AmbientGlow';
 import { KpiCard } from '../components/ui/KpiCard';
+import { UnauthorizedReachPie } from '../components/UnauthorizedReachPie';
 import {
   Radio,
   AlertTriangle,
@@ -49,6 +51,15 @@ export const RadarView: React.FC<RadarViewProps> = ({
   const [countryFilter, setCountryFilter] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<SortOrder>('recent');
   const [page, setPage] = useState(1);
+  const [reach, setReach] = useState<UnauthorizedReach | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchUnauthorizedReach().then((result) => {
+      if (!cancelled && result) setReach(result);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const radarDomains = useMemo(
     () => entities.filter((e) => NON_AUTHORIZED.includes(e.status)),
@@ -147,6 +158,8 @@ export const RadarView: React.FC<RadarViewProps> = ({
           accent="var(--status-atencao)"
         />
       </div>
+
+      {reach && <UnauthorizedReachPie reach={reach} />}
 
       {/* Critério de neutralidade e rastreabilidade */}
       <GlassCard

@@ -325,3 +325,91 @@ export async function fetchRealChanges(limit = 80): Promise<RegulatoryChange[] |
     return null;
   }
 }
+
+/** 25/09/2026 18h de Brasília — anúncio da proibição. Mesma constante de
+ * apps/web/lib/blocked-after-prohibition.ts em prod. Bloqueio Anatel anterior a esse
+ * instante é a lista antiga (11/10/2024), não a detecção do Radar — fica fora do "no ar". */
+const PROHIBITION_AT = '2026-09-25T18:00:00-03:00';
+
+export interface UnauthorizedReach {
+  noAr: number;
+  foraDoAr: number;
+  naoChecado: number;
+}
+
+/** Réplica, via PostgREST, da query SQL de apps/web/lib/identified-reach.ts: estoque de
+ * casas não autorizadas identificadas pelo Radar, partido por conectividade. Entram domínios
+ * NAO_AUTORIZADA_DETECTADA, INATIVA vindos de NAO_AUTORIZADA_DETECTADA, e BLOQUEADA_ANATEL
+ * só se o bloqueio aconteceu a partir da proibição (não a lista antiga). */
+export async function fetchUnauthorizedReach(): Promise<UnauthorizedReach | null> {
+  const client = supabase;
+  if (!client) return null;
+  try {
+    const [domains, inativaEvents, bloqueioEvents] = await Promise.all([
+      fetchAllPages<{ id: number; active: boolean | null; status: RegulatoryStatus; discovered_via: string | null }>(
+        (from, to) =>
+          client
+            .from('domain')
+            .select('id, active, status, discovered_via')
+            .eq('published', true)
+            .in('status', ['NAO_AUTORIZADA_DETECTADA', 'INATIVA', 'BLOQUEADA_ANATEL'])
+            .range(from, to) as unknown as PromiseLike<{ data: any[] | null; error: any }>,
+        6000
+      ),
+      fetchAllPages<{ domain_id: number }>(
+        (from, to) =>
+          client
+            .from('status_event')
+            .select('domain_id')
+            .eq('from_status', 'NAO_AUTORIZADA_DETECTADA')
+            .eq('to_status', 'INATIVA')
+            .range(from, to) as unknown as PromiseLike<{ data: any[] | null; error: any }>,
+        3000
+      ),
+      fetchAllPages<{ domain_id: number; effective_at: string }>(
+        (from, to) =>
+          client
+            .from('status_event')
+            .select('domain_id, effective_at')
+            .eq('to_status', 'BLOQUEADA_ANATEL')
+            .range(from, to) as unknown as PromiseLike<{ data: any[] | null; error: any }>,
+        3000
+      ),
+    ]);
+
+    const inativaFromDetected = new Set(inativaEvents.map((e) => e.domain_id));
+
+    const lastBloqueioAt = new Map<number, string>();
+    for (const e of bloqueioEvents) {
+      const current = lastBloqueioAt.get(e.domain_id);
+      if (!current || e.effective_at > current) lastBloqueioAt.set(e.domain_id, e.effective_at);
+    }
+
+    const seedDatePattern = /^seed:anatel_(\d{4}-\d{2}-\d{2})/;
+
+    const reach: UnauthorizedReach = { noAr: 0, foraDoAr: 0, naoChecado: 0 };
+
+    for (const d of domains) {
+      let included = false;
+      if (d.status === 'NAO_AUTORIZADA_DETECTADA') {
+        included = true;
+      } else if (d.status === 'INATIVA') {
+        included = inativaFromDetected.has(d.id);
+      } else if (d.status === 'BLOQUEADA_ANATEL') {
+        const latest = lastBloqueioAt.get(d.id);
+        const seedMatch = d.discovered_via ? seedDatePattern.exec(d.discovered_via) : null;
+        const blockedAt = latest || (seedMatch ? `${seedMatch[1]}T00:00:00-03:00` : null);
+        included = blockedAt ? new Date(blockedAt).getTime() >= new Date(PROHIBITION_AT).getTime() : false;
+      }
+      if (!included) continue;
+      if (d.active === true) reach.noAr += 1;
+      else if (d.active === false) reach.foraDoAr += 1;
+      else reach.naoChecado += 1;
+    }
+
+    return reach;
+  } catch (err) {
+    console.warn('[realData] Falha ao buscar alcance de não autorizadas do Supabase.', err);
+    return null;
+  }
+}
