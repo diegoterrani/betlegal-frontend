@@ -14,19 +14,22 @@ export default async function handler(req: any, res: any) {
     const validSince = since && /^\d{4}-\d{2}-\d{2}$/.test(since) ? since : undefined;
     const limit = Math.min(Number(url.searchParams.get('limit') ?? 200) || 200, 1000);
 
-    const rows = await fetchAllRows(
+    // PostgREST não compara coluna com coluna (.not('from_status','eq','to_status') tentaria
+    // comparar com a STRING "to_status", não com a coluna) — prod faz isso em SQL bruto
+    // (e.from_status IS DISTINCT FROM e.to_status). Busca uma folga extra e filtra em JS.
+    const fetched = await fetchAllRows(
       (from: number, to: number) => {
         let q = client
           .from('status_event')
           .select('id, created_at, effective_at, from_status, to_status, actor, rule_id, note, domain:domain_id!inner(host, published, brand:brand_id(name, slug))')
           .neq('actor', 'rollback')
-          .not('from_status', 'eq', 'to_status')
           .eq('domain.published', true);
         if (validSince) q = q.gte('created_at', validSince);
         return q.order('created_at', { ascending: false }).order('id', { ascending: false }).range(from, to);
       },
-      limit
+      Math.min(limit * 2, 2000)
     );
+    const rows = fetched.filter((r: any) => r.from_status !== r.to_status).slice(0, limit);
 
     const mapped = rows.map((c: any) => {
       const dt = new Date(c.created_at);
