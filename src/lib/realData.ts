@@ -3,22 +3,39 @@ import { BetEntity, BrandReputation, RegulatoryChange, RegulatoryStatus, Livenes
 
 /** O PostgREST do Supabase limita cada resposta a 100 linhas (max-rows do projeto), não importa
  * o que `.limit()` pede. Para trazer mais que isso, pagina com `.range()` até esgotar ou bater
- * no teto `maxRows`. Ainda usado por fetchUnauthorizedReach (consulta direta, sem endpoint próprio). */
+ * no teto `maxRows`. Busca em lotes paralelos (em vez de página a página em série) — com ~4.800
+ * linhas isso é a diferença entre ~10s (60 requisições em série) e ~1s (6 lotes de 10 em
+ * paralelo). Ainda usado por fetchUnauthorizedReach (consulta direta, sem endpoint próprio). */
 async function fetchAllPages<T>(
   buildQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>,
   maxRows: number,
-  pageSize = 100
+  pageSize = 100,
+  concurrency = 10
 ): Promise<T[]> {
   const rows: T[] = [];
   let from = 0;
-  while (rows.length < maxRows) {
-    const to = Math.min(from + pageSize, maxRows) - 1;
-    const { data, error } = await buildQuery(from, to);
-    if (error) throw error;
-    const page = data || [];
-    rows.push(...page);
-    if (page.length < to - from + 1) break; // última página
-    from += pageSize;
+  while (from < maxRows) {
+    const batchStarts: number[] = [];
+    for (let i = 0; i < concurrency && from + i * pageSize < maxRows; i++) {
+      batchStarts.push(from + i * pageSize);
+    }
+    const results = await Promise.all(
+      batchStarts.map((start) => {
+        const to = Math.min(start + pageSize, maxRows) - 1;
+        return buildQuery(start, to);
+      })
+    );
+    let reachedEnd = false;
+    for (let i = 0; i < results.length; i++) {
+      const { data, error } = results[i];
+      if (error) throw error;
+      const page = data || [];
+      rows.push(...page);
+      const expectedLen = Math.min(batchStarts[i] + pageSize, maxRows) - batchStarts[i];
+      if (page.length < expectedLen) { reachedEnd = true; break; }
+    }
+    if (reachedEnd) break;
+    from += batchStarts.length * pageSize;
   }
   return rows;
 }
@@ -272,7 +289,6 @@ export interface UnauthorizedReach {
  * proibição (não a lista antiga). */
 export async function fetchUnauthorizedReach(): Promise<UnauthorizedReach | null> {
   const client = supabase;
-  console.log('[realData] fetchUnauthorizedReach: client =', client ? 'ok' : 'NULL');
   if (!client) return null;
   try {
     const [domains, inativaEvents, bloqueioEvents] = await Promise.all([

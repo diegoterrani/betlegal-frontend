@@ -55,14 +55,12 @@ export const RadarView: React.FC<RadarViewProps> = ({
 
   useEffect(() => {
     let cancelled = false;
-    console.log('[RadarView] chamando fetchUnauthorizedReach...');
     fetchUnauthorizedReach()
       .then((result) => {
-        console.log('[RadarView] fetchUnauthorizedReach resolveu:', result);
         if (!cancelled && result) setReach(result);
       })
       .catch((err) => {
-        console.error('[RadarView] fetchUnauthorizedReach rejeitou:', err);
+        console.error('[RadarView] Falha ao buscar o alcance das não autorizadas.', err);
       });
     return () => { cancelled = true; };
   }, []);
