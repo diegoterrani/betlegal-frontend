@@ -3,14 +3,17 @@ import { BetEntity, BrandReputation, RegulatoryChange, RegulatoryStatus, Livenes
 
 /** O PostgREST do Supabase limita cada resposta a 100 linhas (max-rows do projeto), não importa
  * o que `.limit()` pede. Para trazer mais que isso, pagina com `.range()` até esgotar ou bater
- * no teto `maxRows`. Busca em lotes paralelos (em vez de página a página em série) — com ~4.800
- * linhas isso é a diferença entre ~10s (60 requisições em série) e ~1s (6 lotes de 10 em
- * paralelo). Ainda usado por fetchUnauthorizedReach (consulta direta, sem endpoint próprio). */
+ * no teto `maxRows`. Busca em lotes pequenos em paralelo (em vez de página a página em série,
+ * mas sem exagerar): fetchUnauthorizedReach chama isto 3 vezes ao mesmo tempo, então
+ * concurrency=10 aqui vira 30 requisições simultâneas somadas — o suficiente pra esgotar o pool
+ * de conexões do Postgres e travar pra sempre (testado em produção: Promise.all nunca resolvia).
+ * concurrency=3 mantém o ganho de velocidade (série vira ~1/3 do tempo) com um teto seguro
+ * (3 chamadas × 3 = 9 requisições simultâneas no pico). */
 async function fetchAllPages<T>(
   buildQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>,
   maxRows: number,
   pageSize = 100,
-  concurrency = 10
+  concurrency = 3
 ): Promise<T[]> {
   const rows: T[] = [];
   let from = 0;
