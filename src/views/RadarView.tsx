@@ -55,9 +55,15 @@ export const RadarView: React.FC<RadarViewProps> = ({
 
   useEffect(() => {
     let cancelled = false;
-    fetchUnauthorizedReach().then((result) => {
-      if (!cancelled && result) setReach(result);
-    });
+    console.log('[RadarView] chamando fetchUnauthorizedReach...');
+    fetchUnauthorizedReach()
+      .then((result) => {
+        console.log('[RadarView] fetchUnauthorizedReach resolveu:', result);
+        if (!cancelled && result) setReach(result);
+      })
+      .catch((err) => {
+        console.error('[RadarView] fetchUnauthorizedReach rejeitou:', err);
+      });
     return () => { cancelled = true; };
   }, []);
 

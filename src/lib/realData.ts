@@ -272,6 +272,7 @@ export interface UnauthorizedReach {
  * proibição (não a lista antiga). */
 export async function fetchUnauthorizedReach(): Promise<UnauthorizedReach | null> {
   const client = supabase;
+  console.log('[realData] fetchUnauthorizedReach: client =', client ? 'ok' : 'NULL');
   if (!client) return null;
   try {
     const [domains, inativaEvents, bloqueioEvents] = await Promise.all([
