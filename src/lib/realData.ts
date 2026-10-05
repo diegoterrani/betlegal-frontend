@@ -1,9 +1,9 @@
 import { supabase } from './supabaseClient';
-import { BetEntity, RegulatoryChange, RegulatoryStatus, LivenessStatus, RegulatorySphere } from '../types';
+import { BetEntity, BrandReputation, RegulatoryChange, RegulatoryStatus, LivenessStatus } from '../types';
 
 /** O PostgREST do Supabase limita cada resposta a 100 linhas (max-rows do projeto), não importa
  * o que `.limit()` pede. Para trazer mais que isso, pagina com `.range()` até esgotar ou bater
- * no teto `maxRows`. Usado por toda consulta que pode passar de 100 linhas. */
+ * no teto `maxRows`. Ainda usado por fetchUnauthorizedReach (consulta direta, sem endpoint próprio). */
 async function fetchAllPages<T>(
   buildQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>,
   maxRows: number,
@@ -23,61 +23,10 @@ async function fetchAllPages<T>(
   return rows;
 }
 
-/** Leitura read-only do Supabase de produção (betlegal-prod), via chave anon + RLS
- * restrita a 11 tabelas públicas (ver migração anon_readonly_public_content). Nenhuma
- * escrita passa por aqui. Se o Supabase não estiver configurado (.env ausente) ou a
- * consulta falhar, as funções abaixo retornam null e quem chama mantém o mock. */
-
-interface RawOperator {
-  id: number;
-  legal_name: string;
-  cnpj: string;
-}
-
-interface RawBrand {
-  id: number;
-  name: string;
-  slug: string;
-  operator: RawOperator | null;
-}
-
-interface RawDomain {
-  id: number;
-  host: string;
-  status: RegulatoryStatus;
-  published: boolean;
-  active: boolean | null;
-  first_seen_at: string | null;
-  last_verified_at: string | null;
-  registered_at: string | null;
-  first_cert_at: string | null;
-  hosting_ip: string | null;
-  hosting_asn: number | null;
-  hosting_asn_org: string | null;
-  hosting_cc: string | null;
-  brand: RawBrand | null;
-}
-
-interface RawGrant {
-  id: number;
-  domain_id: number | null;
-  brand_id: number | null;
-  kind: 'NACIONAL' | 'ESTADUAL' | 'JUDICIAL' | 'REQUERIMENTO';
-  uf: string | null;
-  portaria: string | null;
-  portaria_date: string | null;
-  active: boolean;
-}
-
-interface RawStatusEvent {
-  id: number;
-  domain_id: number;
-  from_status: RegulatoryStatus | null;
-  to_status: RegulatoryStatus;
-  note: string | null;
-  effective_at: string;
-  created_at: string;
-}
+/** Leitura via a camada /api/v1 (funções serverless da Vercel, ver api/v1/*.ts), que porta a
+ * lógica real de apps/web/lib/queries.ts e catalog.ts de prod — mesmos rótulos, mesma forma de
+ * montar o dado. Nenhuma escrita passa por aqui. Se o endpoint falhar ou não existir (dev local
+ * sem `vercel dev`, por exemplo), as funções abaixo retornam null e quem chama mantém o mock. */
 
 function formatCNPJ(raw: string | null | undefined): string {
   const digits = (raw || '').replace(/\D/g, '');
@@ -103,20 +52,6 @@ function slugifyHost(host: string): string {
   return host.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
-/** Nome de exibição para domínios sem marca formal vinculada (a maioria dos clones/não
- * autorizados detectados) — deriva do próprio host, já que não há operador cadastrado. */
-function displayNameFromHost(host: string): string {
-  const base = host.replace(/^www\./, '').split('.')[0] || host;
-  return base.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-const KIND_LABEL: Record<RawGrant['kind'], { sphere: RegulatorySphere; source: string; sourceUrl: string }> = {
-  NACIONAL: { sphere: 'federal', source: 'Secretaria de Prêmios e Apostas do Ministério da Fazenda (SPA/MF)', sourceUrl: 'https://www.gov.br/fazenda/pt-br/composicao/orgaos/secretaria-de-premios-e-apostas' },
-  ESTADUAL: { sphere: 'estadual', source: 'Loteria estadual', sourceUrl: '' },
-  JUDICIAL: { sphere: 'judicial', source: 'Decisão judicial', sourceUrl: '' },
-  REQUERIMENTO: { sphere: 'nenhuma', source: 'SIGAP — requerimento em análise', sourceUrl: 'https://www.gov.br/fazenda/pt-br/composicao/orgaos/secretaria-de-premios-e-apostas' },
-};
-
 const STATUS_TEXT: Record<RegulatoryStatus, string> = {
   AUTORIZADA_NACIONAL: 'Autorizada — nacional, SPA/MF',
   AUTORIZADA_ESTADUAL: 'Autorizada — estadual',
@@ -129,9 +64,9 @@ const STATUS_TEXT: Record<RegulatoryStatus, string> = {
   DESCONHECIDA: 'Em verificação',
 };
 
-function livenessFromActive(active: boolean | null): LivenessStatus {
-  if (active === true) return 'ONLINE';
-  if (active === false) return 'OFFLINE';
+function livenessFromApi(liveness: string): LivenessStatus {
+  if (liveness === 'NO_AR') return 'ONLINE';
+  if (liveness === 'FORA_DO_AR') return 'OFFLINE';
   return 'UNRESPONSIVE';
 }
 
@@ -145,185 +80,178 @@ const EMPTY_REPUTATION = {
   ratingLabel: 'Sem índice' as const,
 };
 
-const DOMAIN_SELECT = 'id, host, status, published, active, first_seen_at, last_verified_at, registered_at, first_cert_at, hosting_ip, hosting_asn, hosting_asn_org, hosting_cc, brand:brand_id(id, name, slug, operator:operator_id(id, legal_name, cnpj))';
+function ratingLabelFromScore(score: number): BrandReputation['ratingLabel'] {
+  if (score >= 8) return 'Ótimo';
+  if (score >= 6) return 'Bom';
+  if (score >= 4) return 'Regular';
+  if (score >= 2) return 'Ruim';
+  if (score > 0) return 'Não Recomendado';
+  return 'Sem índice';
+}
 
-const AUTHORIZED_STATUSES: RegulatoryStatus[] = ['AUTORIZADA_NACIONAL', 'AUTORIZADA_ESTADUAL', 'DECISAO_JUDICIAL'];
+// --- contrato de /api/v1/catalog e /api/v1/changes (ver api/_lib/contract.ts) ---
 
-/** Busca domínios publicados + marca + operadora + outorga + histórico recente, e monta
- * BetEntity[] (uma entidade por domínio — reflete o status real por domínio, não por marca).
- *
- * O catálogo autorizado (status em AUTHORIZED_STATUSES, ~250 linhas) é sempre trazido por
- * completo via paginação. O restante (bloqueadas, inativas, não autorizadas — ~4.800 linhas)
- * é uma amostra limitada a `sampleLimit`: trazer tudo exigiria dezenas de páginas a cada
- * carregamento da home, sem ganho real para validar a integração. */
-export async function fetchRealEntities(sampleLimit = 900): Promise<BetEntity[] | null> {
-  const client = supabase;
-  if (!client) return null;
+interface ApiDomainRecord {
+  host: string;
+  brand_slug: string;
+  brand_name: string;
+  operator_name: string;
+  operator_cnpj: string;
+  status: RegulatoryStatus;
+  detection_kind: 'DOMINIO_DE_OPERADOR_AUTORIZADO' | null;
+  detection_target?: string;
+  registered_at?: string;
+  first_cert_at?: string;
+  liveness: 'NO_AR' | 'FORA_DO_AR' | 'NAO_CHECADO';
+  first_seen: string;
+  last_seen: string;
+  verified_at: string;
+  effective_at?: string;
+  source_name: string;
+  source_url: string;
+  evidence_snippet: string;
+  hosting_ip?: string;
+  hosting_asn?: string;
+  hosting_country?: string;
+}
+
+interface ApiBrandRecord {
+  slug: string;
+  uf?: string;
+  community_rating?: { score: number };
+  reclame_aqui?: { score: number; complaints: number; solved_rate: number } | null;
+}
+
+interface ApiChangeRecord {
+  id: string;
+  timestamp: string;
+  date: string;
+  time: string;
+  type: RegulatoryChange['type'];
+  brandName: string;
+  host: string;
+  previousStatus: RegulatoryStatus | null;
+  currentStatus: RegulatoryStatus;
+  sourceDoc: string;
+  summary: string;
+}
+
+async function fetchJson<T>(path: string): Promise<T | null> {
   try {
-    const [authorizedDomains, sampleDomains, grants, events] = await Promise.all([
-      fetchAllPages<RawDomain>(
-        (from, to) =>
-          client
-            .from('domain')
-            .select(DOMAIN_SELECT)
-            .eq('published', true)
-            .in('status', AUTHORIZED_STATUSES)
-            .range(from, to) as unknown as PromiseLike<{ data: RawDomain[] | null; error: any }>,
-        5000
-      ),
-      fetchAllPages<RawDomain>(
-        (from, to) =>
-          client
-            .from('domain')
-            .select(DOMAIN_SELECT)
-            .eq('published', true)
-            .not('status', 'in', `(${AUTHORIZED_STATUSES.join(',')})`)
-            .order('last_verified_at', { ascending: false })
-            .range(from, to) as unknown as PromiseLike<{ data: RawDomain[] | null; error: any }>,
-        sampleLimit
-      ),
-      fetchAllPages<RawGrant>(
-        (from, to) =>
-          client
-            .from('authorization_grant')
-            .select('id, domain_id, brand_id, kind, uf, portaria, portaria_date, active')
-            .range(from, to) as unknown as PromiseLike<{ data: RawGrant[] | null; error: any }>,
-        1000
-      ),
-      fetchAllPages<RawStatusEvent>(
-        (from, to) =>
-          client
-            .from('status_event')
-            .select('id, domain_id, from_status, to_status, note, effective_at, created_at')
-            .order('effective_at', { ascending: false })
-            .range(from, to) as unknown as PromiseLike<{ data: RawStatusEvent[] | null; error: any }>,
-        600
-      ),
-    ]);
-
-    const domains = [...authorizedDomains, ...sampleDomains];
-
-    const grantByDomain = new Map<number, RawGrant>();
-    for (const g of grants) {
-      if (g.domain_id == null) continue;
-      const existing = grantByDomain.get(g.domain_id);
-      if (!existing || (g.active && !existing.active)) grantByDomain.set(g.domain_id, g);
-    }
-
-    const eventsByDomain = new Map<number, RawStatusEvent[]>();
-    for (const e of events) {
-      const list = eventsByDomain.get(e.domain_id) || [];
-      list.push(e);
-      eventsByDomain.set(e.domain_id, list);
-    }
-
-    const entities: BetEntity[] = domains.map((d) => {
-        // A maioria dos domínios não autorizados/clones não tem marca formal vinculada
-        // (não são operadores cadastrados) — nesse caso o host é o único identificador.
-        const brand = d.brand || null;
-        const operator = brand?.operator || null;
-        const grant = grantByDomain.get(d.id);
-        const kindInfo = grant ? KIND_LABEL[grant.kind] : null;
-        const domainEvents = (eventsByDomain.get(d.id) || []).slice(0, 8);
-
-        return {
-          id: `domain-${d.id}`,
-          slug: slugifyHost(d.host),
-          brandName: brand?.name || displayNameFromHost(d.host),
-          tradeNames: [],
-          legalName: operator?.legal_name || 'Não identificado',
-          cnpj: operator ? formatCNPJ(operator.cnpj) : '',
-          status: d.status,
-          statusText: STATUS_TEXT[d.status] || d.status,
-          sphere: kindInfo?.sphere || 'nenhuma',
-          stateJurisdiction: grant?.uf?.trim() || undefined,
-          portariaNumber: grant?.portaria || undefined,
-          officialSource: kindInfo?.source || 'Fontes públicas consultadas',
-          officialSourceUrl: kindInfo?.sourceUrl || '',
-          licenseDate: formatDateBR(grant?.portaria_date) || undefined,
-          verifiedAt: formatDateBR(d.last_verified_at) || formatDateBR(d.first_seen_at),
-          lastCheckedTime: formatTimeBR(d.last_verified_at),
-          domains: [
-            {
-              host: d.host,
-              isPrimary: true,
-              registeredToCnpj: operator ? formatCNPJ(operator.cnpj) : '',
-              liveness: livenessFromActive(d.active),
-              httpCode: d.active ? 200 : 0,
-              ipAddress: d.hosting_ip || undefined,
-              asn: d.hosting_asn ? `AS${d.hosting_asn}${d.hosting_asn_org ? ` (${d.hosting_asn_org})` : ''}` : undefined,
-              hostingProvider: d.hosting_asn_org || undefined,
-              hostingCountry: d.hosting_cc || undefined,
-              detectedAt: d.first_seen_at ? `${formatDateBR(d.first_seen_at)} ${formatTimeBR(d.first_seen_at)}` : undefined,
-              registeredAt: d.registered_at ? formatDateBR(d.registered_at) : undefined,
-              firstCertAt: d.first_cert_at ? formatDateBR(d.first_cert_at) : undefined,
-            },
-          ],
-          evidenceSummary: grant?.portaria
-            ? `Registro ${grant.portaria}${grant.portaria_date ? `, de ${formatDateBR(grant.portaria_date)}` : ''}, conforme fonte oficial.`
-            : 'Classificação com base no cruzamento das fontes públicas consultadas pelo Bet Legal.',
-          cloneRiskNotice: d.status === 'NAO_AUTORIZADA_DETECTADA' || d.status === 'BLOQUEADA_ANATEL'
-            ? 'Possível clone / lookalike — este domínio não consta nas listas oficiais de autorização.'
-            : undefined,
-          reputation: EMPTY_REPUTATION,
-          historicalChanges: domainEvents.map((e) => ({
-            date: formatDateBR(e.effective_at),
-            description: e.note || `Status alterado${e.from_status ? ` de ${STATUS_TEXT[e.from_status] || e.from_status}` : ''} para ${STATUS_TEXT[e.to_status] || e.to_status}.`,
-            source: 'Histórico de status — Bet Legal',
-          })),
-        } satisfies BetEntity;
-      });
-
-    return entities;
+    const res = await fetch(path);
+    if (!res.ok) throw new Error(`${path} respondeu ${res.status}`);
+    return (await res.json()) as T;
   } catch (err) {
-    console.warn('[realData] Falha ao buscar entidades reais do Supabase, mantendo mock.', err);
+    console.warn(`[realData] Falha ao buscar ${path}.`, err);
     return null;
   }
 }
 
-/** Busca os eventos de status mais recentes (feed de "Mudanças"). */
-export async function fetchRealChanges(limit = 80): Promise<RegulatoryChange[] | null> {
-  if (!supabase) return null;
-  try {
-    const { data, error } = await supabase
-      .from('status_event')
-      .select('id, domain_id, from_status, to_status, note, effective_at, domain:domain_id(host, brand:brand_id(name, operator:operator_id(cnpj)))')
-      .order('effective_at', { ascending: false })
-      .limit(limit);
-    if (error) throw error;
+const STATE_FROM_SOURCE = /Loteria estadual \(([A-Z]{2})\)/;
 
-    const rows = (data || []) as unknown as (RawStatusEvent & { domain: { host: string; brand: { name: string; operator: { cnpj: string } | null } | null } | null })[];
+/** Busca o catálogo real (api/v1/catalog) e o feed de mudanças (api/v1/changes), e monta
+ * BetEntity[] — uma entidade por domínio, refletindo o status real por domínio, não por marca.
+ * O catálogo traz TODOS os domínios publicados (sem amostragem — a antiga limitação de até 900
+ * não autorizadas era do fetch direto do navegador, paginado 100 em 100; o endpoint já resolve
+ * isso do lado do servidor). */
+export async function fetchRealEntities(): Promise<BetEntity[] | null> {
+  const [catalog, changes] = await Promise.all([
+    fetchJson<{ domains: ApiDomainRecord[]; brands: ApiBrandRecord[] }>('/api/v1/catalog'),
+    fetchJson<{ changes: ApiChangeRecord[] }>('/api/v1/changes?limit=1000'),
+  ]);
+  if (!catalog) return null;
 
-    return rows
-      .filter((r) => r.domain)
-      .map((r) => {
-        const type: RegulatoryChange['type'] =
-          r.to_status === 'BLOQUEADA_ANATEL' ? 'block_anatel'
-          : !r.from_status ? 'inclusion'
-          : r.to_status === 'SUSPENSA_REVOGADA' ? 'removal'
-          : 'status_change';
-        const host = r.domain!.host;
-        const brand = r.domain!.brand;
-        return {
-          id: `status_event-${r.id}`,
-          timestamp: r.effective_at,
-          date: formatDateBR(r.effective_at),
-          time: formatTimeBR(r.effective_at),
-          type,
-          brandName: brand?.name || displayNameFromHost(host),
-          host,
-          cnpj: brand?.operator?.cnpj ? formatCNPJ(brand.operator.cnpj) : undefined,
-          previousStatus: r.from_status || undefined,
-          currentStatus: r.to_status,
-          sourceDoc: 'Histórico de status — Bet Legal',
-          sourceUrl: '',
-          summary: r.note || `${host} passou para "${STATUS_TEXT[r.to_status] || r.to_status}".`,
-        } satisfies RegulatoryChange;
-      });
-  } catch (err) {
-    console.warn('[realData] Falha ao buscar mudanças reais do Supabase, mantendo mock.', err);
-    return null;
+  const brandBySlug = new Map(catalog.brands.map((b) => [b.slug, b]));
+
+  const eventsByHost = new Map<string, ApiChangeRecord[]>();
+  for (const c of changes?.changes || []) {
+    const list = eventsByHost.get(c.host) || [];
+    if (list.length < 8) list.push(c);
+    eventsByHost.set(c.host, list);
   }
+
+  return catalog.domains.map((d) => {
+    const brand = brandBySlug.get(d.brand_slug);
+    const sphere =
+      d.status === 'AUTORIZADA_NACIONAL' ? 'federal' as const :
+      d.status === 'AUTORIZADA_ESTADUAL' ? 'estadual' as const :
+      d.status === 'DECISAO_JUDICIAL' ? 'judicial' as const : 'nenhuma' as const;
+    const stateMatch = STATE_FROM_SOURCE.exec(d.source_name);
+    const reclameAqui = brand?.reclame_aqui;
+    const communityScore = brand?.community_rating?.score;
+    const reputationScore = reclameAqui?.score ?? communityScore;
+
+    return {
+      id: `domain-${d.host}`,
+      slug: slugifyHost(d.host),
+      brandName: d.brand_name,
+      tradeNames: [],
+      legalName: d.operator_name || 'Não identificado',
+      cnpj: d.operator_cnpj ? formatCNPJ(d.operator_cnpj) : '',
+      status: d.status,
+      statusText: STATUS_TEXT[d.status] || d.status,
+      sphere,
+      stateJurisdiction: stateMatch?.[1] || brand?.uf || undefined,
+      portariaNumber: undefined,
+      officialSource: d.source_name,
+      officialSourceUrl: d.source_url,
+      licenseDate: d.effective_at ? formatDateBR(d.effective_at) : undefined,
+      verifiedAt: formatDateBR(d.verified_at),
+      lastCheckedTime: formatTimeBR(d.verified_at),
+      domains: [
+        {
+          host: d.host,
+          isPrimary: true,
+          registeredToCnpj: d.operator_cnpj ? formatCNPJ(d.operator_cnpj) : '',
+          liveness: livenessFromApi(d.liveness),
+          httpCode: d.liveness === 'NO_AR' ? 200 : 0,
+          ipAddress: d.hosting_ip || undefined,
+          asn: d.hosting_asn || undefined,
+          hostingCountry: d.hosting_country || undefined,
+          detectedAt: d.first_seen ? `${formatDateBR(d.first_seen)} ${formatTimeBR(d.first_seen)}` : undefined,
+          registeredAt: d.registered_at ? formatDateBR(d.registered_at) : undefined,
+          firstCertAt: d.first_cert_at ? formatDateBR(d.first_cert_at) : undefined,
+        },
+      ],
+      evidenceSummary: d.evidence_snippet,
+      cloneRiskNotice: d.status === 'NAO_AUTORIZADA_DETECTADA' || d.status === 'BLOQUEADA_ANATEL'
+        ? 'Possível clone / lookalike — este domínio não consta nas listas oficiais de autorização.'
+        : undefined,
+      reputation: reputationScore != null ? {
+        ...EMPTY_REPUTATION,
+        reclameAquiScore: reclameAqui?.score ?? 0,
+        complaintsCount: reclameAqui?.complaints ?? 0,
+        solvedRatePercent: reclameAqui?.solved_rate ?? 0,
+        ratingLabel: ratingLabelFromScore(reputationScore),
+      } : EMPTY_REPUTATION,
+      historicalChanges: (eventsByHost.get(d.host) || []).map((e) => ({
+        date: e.date,
+        description: e.summary,
+        source: 'Histórico de status — Bet Legal',
+      })),
+    } satisfies BetEntity;
+  });
+}
+
+/** Busca os eventos de status mais recentes (feed de "Mudanças"), via api/v1/changes. */
+export async function fetchRealChanges(limit = 80): Promise<RegulatoryChange[] | null> {
+  const data = await fetchJson<{ changes: ApiChangeRecord[] }>(`/api/v1/changes?limit=${limit}`);
+  if (!data) return null;
+  return data.changes.map((c) => ({
+    id: c.id,
+    timestamp: c.timestamp,
+    date: c.date,
+    time: c.time,
+    type: c.type,
+    brandName: c.brandName,
+    host: c.host,
+    cnpj: undefined,
+    previousStatus: c.previousStatus || undefined,
+    currentStatus: c.currentStatus,
+    sourceDoc: c.sourceDoc,
+    sourceUrl: '',
+    summary: c.summary,
+  } satisfies RegulatoryChange));
 }
 
 /** 25/09/2026 18h de Brasília — anúncio da proibição. Mesma constante de
@@ -337,10 +265,11 @@ export interface UnauthorizedReach {
   naoChecado: number;
 }
 
-/** Réplica, via PostgREST, da query SQL de apps/web/lib/identified-reach.ts: estoque de
- * casas não autorizadas identificadas pelo Radar, partido por conectividade. Entram domínios
- * NAO_AUTORIZADA_DETECTADA, INATIVA vindos de NAO_AUTORIZADA_DETECTADA, e BLOQUEADA_ANATEL
- * só se o bloqueio aconteceu a partir da proibição (não a lista antiga). */
+/** Réplica, via PostgREST direto (sem endpoint próprio ainda), da query SQL de
+ * apps/web/lib/identified-reach.ts: estoque de casas não autorizadas identificadas pelo Radar,
+ * partido por conectividade. Entram domínios NAO_AUTORIZADA_DETECTADA, INATIVA vindos de
+ * NAO_AUTORIZADA_DETECTADA, e BLOQUEADA_ANATEL só se o bloqueio aconteceu a partir da
+ * proibição (não a lista antiga). */
 export async function fetchUnauthorizedReach(): Promise<UnauthorizedReach | null> {
   const client = supabase;
   if (!client) return null;
