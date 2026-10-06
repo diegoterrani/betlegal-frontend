@@ -18,6 +18,37 @@ import {
 import { AuthorizationTrendPoint } from '../data/mockData';
 import { fetchPublicStats, fetchTimeseries, PublicStats, SeriesPoint } from '../lib/realData';
 
+/** Janela do gráfico da home. Antes disso a série existe, mas a coleta de não autorizadas ainda não. */
+const CHART_START = '2026-09-01';
+
+function todayInBrasilia(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
+function homeTrend(series: SeriesPoint[], stats: PublicStats | null): AuthorizationTrendPoint[] {
+  const today = todayInBrasilia();
+  const by = stats?.byStatus;
+  const live = by
+    ? {
+        authorized: (by.AUTORIZADA_NACIONAL || 0) + (by.AUTORIZADA_ESTADUAL || 0) + (by.DECISAO_JUDICIAL || 0),
+        unauthorized: by.NAO_AUTORIZADA_DETECTADA || 0,
+      }
+    : null;
+  return series
+    .filter((point) => point.day >= CHART_START)
+    .map((point) => ({
+      date: point.day,
+      displayDate: `${point.day.slice(8, 10)}/${point.day.slice(5, 7)}`,
+      authorized: live && point.day === today ? live.authorized : point.authorized,
+      unauthorized: live && point.day === today ? live.unauthorized : point.unauthorized,
+    }));
+}
+
 interface HomeViewProps {
   entities: BetEntity[];
   changes: RegulatoryChange[];
@@ -53,14 +84,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     return () => { cancelled = true; };
   }, []);
 
-  const trend: AuthorizationTrendPoint[] = series
-    .filter((_, index) => index % 7 === 0 || index === series.length - 1)
-    .map((point) => ({
-      date: point.day,
-      displayDate: point.day.slice(8, 10) + '/' + point.day.slice(5, 7),
-      authorized: point.authorized,
-      unauthorized: point.unauthorized,
-    }));
+  const trend = homeTrend(series, stats);
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
