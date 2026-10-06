@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { AmbientGlow } from '../components/ui/AmbientGlow';
+import { CloneHouse, RegulatedClonesBoard } from '../components/RegulatedClonesBoard';
 import { useUser } from '../context/UserContext';
 import { apiGet, apiSend } from '../lib/http';
 
@@ -52,15 +53,6 @@ interface ReviewRow {
   hidden: boolean;
   brand: string;
   email: string;
-}
-
-interface CloneHouse {
-  name: string;
-  slug: string;
-  legal_name: string;
-  cnpj: string;
-  official_domains: { host: string }[];
-  clones: { host: string; status: string; relation_label: string }[];
 }
 
 interface QueuePayload {
@@ -140,7 +132,7 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ onNavigate, init
   const [overview, setOverview] = useState<Overview | null>(null);
   const [contests, setContests] = useState<Contest[]>([]);
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
-  const [houses, setHouses] = useState<CloneHouse[]>([]);
+  const [houses, setHouses] = useState<CloneHouse[] | null>(null);
   const [queues, setQueues] = useState<QueuePayload | null>(null);
   const [human, setHuman] = useState<HumanPayload | null>(null);
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -159,7 +151,9 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ onNavigate, init
     } else if (tab === 'avaliacoes') {
       apiGet<{ reviews: ReviewRow[] }>('/api/v1/admin/reviews').then((data) => { if (!cancelled) setReviews(data.reviews || []); }).catch(fail);
     } else if (tab === 'clones' && user?.role === 'super_admin') {
-      apiGet<{ houses: CloneHouse[] }>('/api/v1/admin/regulated-clones').then((data) => { if (!cancelled) setHouses(data.houses || []); }).catch(fail);
+      apiGet<{ houses: CloneHouse[] }>('/api/v1/admin/regulated-clones')
+        .then((data) => { if (!cancelled) setHouses(data.houses || []); })
+        .catch((err: Error) => { if (!cancelled) { setHouses([]); fail(err); } });
     } else if (tab === 'filas') {
       Promise.allSettled([
         apiGet<QueuePayload>('/api/v1/admin/pipeline-queues'),
@@ -238,18 +232,9 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ onNavigate, init
         </GlassCard>
       ))}
 
-      {tab === 'clones' && user.role !== 'super_admin' && (
-        <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>A lista de clones regulamentados exige super admin.</p>
+      {tab === 'clones' && (
+        <RegulatedClonesBoard houses={houses} onNavigate={onNavigate} />
       )}
-      {tab === 'clones' && houses.map((house) => (
-        <GlassCard key={house.slug} className="p-4 space-y-2 text-xs">
-          <p className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{house.name} · {house.cnpj}</p>
-          <p style={{ color: 'var(--color-text-tertiary)' }}>{house.official_domains.map((domain) => domain.host).join(', ')}</p>
-          {house.clones.map((clone) => (
-            <p key={clone.host} style={{ color: 'var(--color-text-secondary)' }}>{clone.host} · {clone.relation_label}</p>
-          ))}
-        </GlassCard>
-      ))}
 
       {tab === 'filas' && (
         <div className="space-y-3">
