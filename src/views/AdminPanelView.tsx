@@ -17,9 +17,22 @@ interface Overview {
     authorized_brands: number;
     unauthorized_live: number;
     unauthorized_published: number;
+    detected_offline?: number;
+    detected_unchecked?: number;
+    offline_after_prohibition?: number;
+    blocked_anatel?: number;
+    inactive_domains?: number;
+    suspended_domains?: number;
     review_pending: number;
     contest_pending: number;
     last_run_finished: string | null;
+  };
+  today?: {
+    unauthorized: number;
+    returned?: number;
+    authorized: number;
+    blocked: number;
+    day: string;
   };
 }
 
@@ -72,6 +85,45 @@ interface UserRow {
   created_at: string;
 }
 
+const fmt = (n: number) => n.toLocaleString('pt-BR');
+
+const PanelStock: React.FC<{ kpis: Overview['kpis']; today?: Overview['today'] }> = ({ kpis, today }) => {
+  const detected = kpis.unauthorized_published;
+  const online = kpis.unauthorized_live;
+  const offline = kpis.detected_offline ?? 0;
+  const unchecked = kpis.detected_unchecked ?? 0;
+  const cards: { label: string; value: number; detail?: string }[] = [
+    { label: 'Autorizadas', value: kpis.authorized_domains, detail: `${fmt(kpis.authorized_brands)} marcas` },
+    { label: 'Não autorizadas detectadas', value: detected, detail: 'Fora de qualquer lista oficial.' },
+    { label: 'Online', value: online, detail: 'Página ainda respondendo, só entre as detectadas.' },
+    { label: 'Fora do ar', value: offline, detail: `${fmt(kpis.offline_after_prohibition ?? 0)} saíram do ar depois de 25/09 às 18h.` },
+    { label: 'Sem checagem', value: unchecked, detail: 'Ainda não há leitura conclusiva de disponibilidade.' },
+    { label: 'Bloqueadas Anatel', value: kpis.blocked_anatel ?? 0, detail: 'Lista de bloqueio. Não entram no estoque detectado.' },
+    { label: 'Inativas', value: kpis.inactive_domains ?? 0, detail: 'Fora do estoque detectado.' },
+    { label: 'Suspensas', value: kpis.suspended_domains ?? 0, detail: 'Saíram da lista oficial. Não entram no estoque detectado.' },
+    { label: 'Detectadas hoje', value: today?.unauthorized ?? 0, detail: 'Classificação de página. A sonda não entra.' },
+    { label: 'Voltaram ao ar hoje', value: today?.returned ?? 0, detail: 'Já eram detectadas e uma leitura de página as encontrou.' },
+    { label: 'Fila de revisão', value: kpis.review_pending },
+    { label: 'Contestações pendentes', value: kpis.contest_pending },
+  ];
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {cards.map((card) => (
+          <GlassCard key={card.label} className="p-4">
+            <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{card.label}</p>
+            <p className="font-mono text-2xl" style={{ color: 'var(--color-text-primary)' }}>{fmt(card.value)}</p>
+            {card.detail && <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-tertiary)' }}>{card.detail}</p>}
+          </GlassCard>
+        ))}
+      </div>
+      <p className="text-xs font-mono" style={{ color: 'var(--color-text-tertiary)' }}>
+        {fmt(online)} + {fmt(offline)} + {fmt(unchecked)} = {fmt(detected)}
+      </p>
+    </div>
+  );
+};
+
 const TABS: { id: Tab; label: string }[] = [
   { id: 'visao', label: 'Visão' },
   { id: 'contestacoes', label: 'Contestações' },
@@ -94,10 +146,10 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ onNavigate, init
   const [users, setUsers] = useState<UserRow[]>([]);
   const [note, setNote] = useState<Record<number, string>>({});
 
-  const staff = user && (user.role === 'admin' || user.role === 'super_admin');
+  const superAdmin = user?.role === 'super_admin';
 
   useEffect(() => {
-    if (!ready || !staff) return;
+    if (!ready || !superAdmin) return;
     let cancelled = false;
     const fail = (err: Error) => { if (!cancelled) setError(err.message); };
     if (tab === 'visao') {
@@ -121,14 +173,14 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ onNavigate, init
       apiGet<{ users: UserRow[] }>('/api/v1/admin/users').then((data) => { if (!cancelled) setUsers(data.users || []); }).catch(fail);
     }
     return () => { cancelled = true; };
-  }, [tab, ready, staff, user?.role]);
+  }, [tab, ready, superAdmin, user?.role]);
 
   if (!ready) return null;
-  if (!staff) {
+  if (!superAdmin) {
     return (
       <div className="max-w-md mx-auto px-4 py-20 text-center space-y-4">
         <h1 className="text-xl font-semibold" style={{ color: 'var(--color-text-primary)' }}>Painel</h1>
-        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Esta área exige sessão de administrador na mesma origem.</p>
+        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Esta área abre só com a sessão de super admin na mesma origem.</p>
         <button onClick={() => onNavigate('/entrar?next=/painel')} className="px-4 py-2 text-sm font-semibold rounded cursor-pointer" style={{ backgroundColor: 'var(--status-dado-declarado)', color: 'var(--color-bg)' }}>Entrar</button>
       </div>
     );
@@ -153,21 +205,7 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ onNavigate, init
       {error && <p role="alert" className="text-xs" style={{ color: 'var(--status-nao-autorizada)' }}>{error}</p>}
 
       {tab === 'visao' && kpis && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {[
-            ['Domínios autorizados', kpis.authorized_domains],
-            ['Marcas autorizadas', kpis.authorized_brands],
-            ['Não autorizados no ar', kpis.unauthorized_live],
-            ['Não autorizados publicados', kpis.unauthorized_published],
-            ['Revisões pendentes', kpis.review_pending],
-            ['Contestações pendentes', kpis.contest_pending],
-          ].map(([label, value]) => (
-            <GlassCard key={String(label)} className="p-4">
-              <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{label}</p>
-              <p className="font-mono text-2xl" style={{ color: 'var(--color-text-primary)' }}>{value}</p>
-            </GlassCard>
-          ))}
-        </div>
+        <PanelStock kpis={kpis} today={overview?.today} />
       )}
 
       {tab === 'contestacoes' && contests.map((contest) => (
