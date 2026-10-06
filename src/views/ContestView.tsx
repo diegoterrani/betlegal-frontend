@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ContestationTicket } from '../types';
-import { INITIAL_TICKETS } from '../data/mockData';
+import { apiSend } from '../lib/http';
 import { CheckCircle2, Send } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { AmbientGlow } from '../components/ui/AmbientGlow';
@@ -15,7 +15,8 @@ const labelClass = "block text-xs font-semibold mb-1";
 const labelStyle = { color: 'var(--color-text-secondary)' };
 
 export const ContestView: React.FC<ContestViewProps> = ({ initialHost = '' }) => {
-  const [tickets, setTickets] = useState<ContestationTicket[]>(INITIAL_TICKETS);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
   const [formData, setFormData] = useState({
     type: 'contestacao_status' as ContestationTicket['type'],
     brandOrDomain: initialHost,
@@ -30,14 +31,13 @@ export const ContestView: React.FC<ContestViewProps> = ({ initialHost = '' }) =>
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.brandOrDomain || !formData.requesterEmail || !formData.justification) {
-      alert('Por favor, preencha todos os campos obrigatórios.');
+    if (!formData.brandOrDomain || formData.justification.trim().length < 10) {
+      setError('Informe o domínio e uma justificativa com pelo menos 10 caracteres.');
       return;
     }
-
-    const randomId = `TKT-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-    const newTicket: ContestationTicket = {
-      id: randomId,
+    setBusy(true);
+    setError('');
+    apiSend<{ id: number; status: string }>('/contestar/enviar', 'POST', {
       type: formData.type,
       brandOrDomain: formData.brandOrDomain,
       requesterName: formData.requesterName,
@@ -45,12 +45,23 @@ export const ContestView: React.FC<ContestViewProps> = ({ initialHost = '' }) =>
       requesterRole: formData.requesterRole,
       justification: formData.justification,
       evidenceLinks: formData.evidenceLinks,
-      createdAt: `${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} BRT`,
-      status: 'recebido',
-    };
-
-    setTickets([newTicket, ...tickets]);
-    setSubmittedTicket(newTicket);
+    })
+      .then((body) => {
+        setSubmittedTicket({
+          id: String(body.id),
+          type: formData.type,
+          brandOrDomain: formData.brandOrDomain,
+          requesterName: formData.requesterName,
+          requesterEmail: formData.requesterEmail,
+          requesterRole: formData.requesterRole,
+          justification: formData.justification,
+          evidenceLinks: formData.evidenceLinks,
+          createdAt: new Date().toLocaleString('pt-BR'),
+          status: 'recebido',
+        });
+      })
+      .catch((err: Error) => setError(err.message || 'Não foi possível registrar.'))
+      .finally(() => setBusy(false));
   };
 
   const handleReset = () => {
@@ -244,53 +255,24 @@ export const ContestView: React.FC<ContestViewProps> = ({ initialHost = '' }) =>
               />
             </div>
 
-            {/* Submit CTA */}
+            {error && <p role="alert" className="text-xs" style={{ color: 'var(--status-nao-autorizada)' }}>{error}</p>}
             <div className="pt-2 flex items-center justify-between">
               <span className="text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
-                Prazo de triagem técnica: até 12 horas úteis.
+                A fila real fica no painel, depois do login de quem modera.
               </span>
               <button
                 type="submit"
+                disabled={busy}
                 className="px-6 py-2.5 font-semibold text-xs sm:text-sm rounded transition-colors cursor-pointer flex items-center gap-1.5"
                 style={{ backgroundColor: 'var(--status-dado-declarado)', color: 'var(--color-bg)' }}
               >
                 <Send className="w-4 h-4" />
-                Submeter para Avaliação
+                {busy ? 'Enviando…' : 'Submeter para Avaliação'}
               </button>
             </div>
           </form>
         </GlassCard>
       )}
-
-      {/* Recentes Protocolos Públicos Anônimos */}
-      <GlassCard className="p-5 space-y-3">
-        <h3 className="text-[11px] font-mono font-medium uppercase tracking-[0.15em]" style={{ color: 'var(--color-text-tertiary)' }}>
-          Transparência da Fila de Contestação
-        </h3>
-        <div className="text-xs">
-          {tickets.slice(0, 3).map((t, idx) => (
-            <div key={t.id} className="py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--color-card-border)' }}>
-              <div>
-                <span className="font-mono font-bold mr-2" style={{ color: 'var(--color-text-secondary)' }}>{t.id}</span>
-                <span className="mr-2" style={{ color: 'var(--color-text-tertiary)' }}>Alvo: <strong style={{ color: 'var(--color-text-primary)' }}>{t.brandOrDomain}</strong></span>
-                <span style={{ color: 'var(--color-text-tertiary)' }}>({t.type.replace('_', ' ')})</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>{t.createdAt}</span>
-                <span
-                  className="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
-                  style={{
-                    color: t.status === 'concluido' ? 'var(--status-autorizada)' : 'var(--status-atencao)',
-                    backgroundColor: t.status === 'concluido' ? 'color-mix(in srgb, var(--status-autorizada) 12%, transparent)' : 'color-mix(in srgb, var(--status-atencao) 12%, transparent)',
-                  }}
-                >
-                  {t.status.replace('_', ' ')}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </GlassCard>
 
     </div>
   );
