@@ -17,7 +17,7 @@ const VALUE_PROPS = [
 ];
 
 function destinationFor(role: UserRole): string {
-  if (role === 'super_admin' || role === 'admin') return '/painel';
+  if (role === 'super_admin') return '/painel';
   if (role === 'operator') return '/operadora';
   return '/';
 }

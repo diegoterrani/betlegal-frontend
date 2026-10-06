@@ -211,13 +211,15 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate, onOpenQ
           ))}
 
           <div className="pt-2 mt-1 border-t space-y-1" style={{ borderColor: 'var(--color-card-border)' }}>
-            <button
-              onClick={() => handleNav('/painel')}
-              className="block w-full text-left px-3 py-2 text-xs font-mono hover:bg-white/5 rounded-md"
-              style={{ color: 'var(--color-text-tertiary)' }}
-            >
-              Área Operacional / Auditoria
-            </button>
+            {user?.role === 'super_admin' && (
+              <button
+                onClick={() => handleNav('/painel')}
+                className="block w-full text-left px-3 py-2 text-xs font-mono hover:bg-white/5 rounded-md"
+                style={{ color: 'var(--color-text-tertiary)' }}
+              >
+                Área Operacional / Auditoria
+              </button>
+            )}
             <button
               onClick={() => handleNav('/operadora')}
               className="block w-full text-left px-3 py-2 text-xs font-mono hover:bg-white/5 rounded-md"

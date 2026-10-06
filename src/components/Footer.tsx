@@ -2,6 +2,7 @@ import React from 'react';
 import { ExternalLink, CheckCircle2 } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { BetLegalLogo } from './brand/BetLegalBrand';
+import { useUser } from '../context/UserContext';
 
 interface FooterProps {
   onNavigate: (path: string) => void;
@@ -11,14 +12,13 @@ const linkStyle = { color: '#A3A3A3' };
 const headingStyle = { color: '#E5E5E5' };
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
+  const { user } = useUser();
   return (
     <footer className="pt-12 pb-8 mt-16 transition-colors" style={{ backgroundColor: '#0A0A0A', color: '#FFFFFF', borderTop: '1px solid rgba(255,255,255,0.14)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* Top Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b" style={{ borderColor: 'rgba(255,255,255,0.14)' }}>
 
-          {/* Brand Col */}
           <div className="md:col-span-1 space-y-3">
             <BetLegalLogo theme="dark" variant="compact" className="h-7 w-auto" />
             <p className="text-xs font-semibold tracking-wide" style={linkStyle}>
@@ -36,7 +36,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Col 2: Consulta & Superfícies */}
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={headingStyle}>
               Consulta & Verificação
@@ -70,7 +69,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             </ul>
           </div>
 
-          {/* Col 3: Inteligência & Regulação */}
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={headingStyle}>
               Transparência & B2B
@@ -96,11 +94,13 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                   Canal de Contestação e Denúncia
                 </button>
               </li>
-              <li>
-                <button onClick={() => onNavigate('/painel')} className="hover:text-white transition-colors cursor-pointer text-left font-mono text-[11px]">
-                  Área Operacional / Crawlers
-                </button>
-              </li>
+              {user?.role === 'super_admin' && (
+                <li>
+                  <button onClick={() => onNavigate('/painel')} className="hover:text-white transition-colors cursor-pointer text-left font-mono text-[11px]">
+                    Área Operacional / Crawlers
+                  </button>
+                </li>
+              )}
               <li>
                 <button onClick={() => onNavigate('/operadora')} className="hover:text-white transition-colors cursor-pointer text-left font-mono text-[11px]">
                   Área da Operadora
@@ -109,7 +109,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             </ul>
           </div>
 
-          {/* Col 4: Fontes Oficiais Integradas */}
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={headingStyle}>
               Fontes Públicas Primárias
@@ -168,7 +167,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Mandatory Legal & Trust Disclaimer */}
         <div className="pt-6 pb-6 text-xs space-y-2" style={linkStyle}>
           <div className="font-semibold" style={{ color: '#D4D4D4' }}>
             Aviso de Transparência — Informação, não parecer jurídico
@@ -181,7 +179,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           </p>
         </div>
 
-        {/* Bottom copyright line + theme toggle */}
         <div
           className="pt-4 border-t flex flex-col sm:flex-row items-center justify-between text-[11px] gap-3"
           style={{ borderColor: 'rgba(255,255,255,0.1)', color: '#737373' }}

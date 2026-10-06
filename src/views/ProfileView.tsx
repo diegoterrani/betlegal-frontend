@@ -115,7 +115,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
         </GlassCard>
       )}
 
-      {(user.role === 'admin' || user.role === 'super_admin') && (
+      {user.role === 'super_admin' && (
         <GlassCard className="p-5 space-y-2">
           <button
             onClick={() => onNavigate('/painel')}
