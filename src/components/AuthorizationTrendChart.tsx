@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { AuthorizationTrendPoint, AUTHORIZATION_TREND_ANNOTATION } from '../data/mockData';
 import { GlassCard } from './ui/GlassCard';
-import { ProhibitionMark, prohibitionLabelSide } from './ui/ProhibitionMark';
+import { COMPULSORY_BLOCK_CAPTION, COMPULSORY_BLOCK_DAY, ProhibitionMark, prohibitionLabelSide } from './ui/ProhibitionMark';
 import { useChartWidth, indexFromPointer } from '../lib/useChartWidth';
 
 interface AuthorizationTrendChartProps {
@@ -14,7 +14,8 @@ const PAD_LEFT = 40;
 const PAD_RIGHT = 8;
 const PAD_TOP = 34;
 const PAD_BOTTOM = 26;
-const AXIS_DATES = ['01/09', '07/09', '13/09', '19/09', '25/09', '02/10'];
+const AXIS_DATES = ['01/09', '07/09', '13/09', '19/09', '25/09', '02/10', '06/10'];
+const MILESTONE_DATES = new Set(['2026-09-25', COMPULSORY_BLOCK_DAY]);
 
 const fmt = (n: number) => n.toLocaleString('pt-BR');
 const fullDate = (iso: string) => iso.split('-').reverse().join('/');
@@ -54,8 +55,8 @@ export const AuthorizationTrendChart: React.FC<AuthorizationTrendChartProps> = (
   const areaPath = (key: 'authorized' | 'unauthorized') =>
     `${linePath(key)} L ${xScale(lastIndex)} ${baselineY} L ${xScale(0)} ${baselineY} Z`;
 
-  const annotationIndex = Math.max(0, data.findIndex((d) => d.date === annotation.date));
-  const annotationX = xScale(annotationIndex);
+  const annotationIndex = data.findIndex((d) => d.date === annotation.date);
+  const blockIndex = data.findIndex((d) => d.date === COMPULSORY_BLOCK_DAY);
   const activeIndex = hoverIndex ?? lastIndex;
   const activePoint = data[activeIndex];
 
@@ -130,7 +131,7 @@ export const AuthorizationTrendChart: React.FC<AuthorizationTrendChartProps> = (
 
             {data.filter((d) => AXIS_DATES.includes(d.displayDate)).map((d) => {
               const i = data.indexOf(d);
-              const isAnnotationDate = d.date === annotation.date;
+              const isAnnotationDate = MILESTONE_DATES.has(d.date);
               const anchor = i === 0 ? 'start' : i === lastIndex ? 'end' : 'middle';
               return (
                 <text
@@ -155,13 +156,6 @@ export const AuthorizationTrendChart: React.FC<AuthorizationTrendChartProps> = (
             <path
               d={linePath('authorized')} fill="none" style={{ stroke: 'var(--data-base)' }}
               strokeWidth={2} strokeLinejoin="round" strokeLinecap="round"
-            />
-
-            <ProhibitionMark
-              x={annotationX}
-              y={yScale(data[annotationIndex].unauthorized)}
-              baseline={baselineY}
-              side={prohibitionLabelSide(annotationX, PAD_LEFT, width - PAD_RIGHT)}
             />
 
             <circle
@@ -190,6 +184,27 @@ export const AuthorizationTrendChart: React.FC<AuthorizationTrendChartProps> = (
               </>
             )}
 
+            {annotationIndex >= 0 && (
+              <ProhibitionMark
+                x={xScale(annotationIndex)}
+                y={yScale(data[annotationIndex].unauthorized)}
+                top={PAD_TOP}
+                baseline={baselineY}
+                side={prohibitionLabelSide(xScale(annotationIndex), PAD_LEFT, width - PAD_RIGHT)}
+              />
+            )}
+            {blockIndex >= 0 && (
+              <ProhibitionMark
+                x={xScale(blockIndex)}
+                y={yScale(data[blockIndex].unauthorized)}
+                top={PAD_TOP}
+                baseline={baselineY}
+                side={prohibitionLabelSide(xScale(blockIndex), PAD_LEFT, width - PAD_RIGHT)}
+                label="00:01 · Bloqueio"
+                caption={COMPULSORY_BLOCK_CAPTION}
+              />
+            )}
+
             <rect
               x={PAD_LEFT} y={0} width={plotWidth} height={HEIGHT} fill="transparent"
               tabIndex={0} role="slider" aria-label="Explorar valores diários"
@@ -209,7 +224,9 @@ export const AuthorizationTrendChart: React.FC<AuthorizationTrendChartProps> = (
         <span className="font-mono font-semibold" style={{ color: 'var(--data-risco)' }}>{fmt(activePoint.unauthorized)}</span> não autorizadas
       </div>
       <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
-        {annotation.description} Passe o cursor sobre o gráfico para ver outro dia.
+        {annotation.description}{' '}
+        {blockIndex >= 0 && '06/10 às 00:01. Bloqueio compulsório de todas as casas regulamentadas. '}
+        Passe o cursor sobre o gráfico para ver outro dia.
       </p>
       <p
         className="text-[11px] mt-3 pt-3 border-t"

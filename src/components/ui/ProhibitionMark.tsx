@@ -11,18 +11,26 @@ export function prohibitionLabelSide(x: number, plotLeft: number, plotRight: num
   return x > (plotLeft + plotRight) / 2 ? 'left' : 'right';
 }
 
+export const COMPULSORY_BLOCK_DAY = '2026-10-06';
+
+export const COMPULSORY_BLOCK_CAPTION =
+  '06/10/2026 às 00:01, horário de Brasília: bloqueio compulsório de todas as casas regulamentadas.';
+
 export const ProhibitionMark: React.FC<{
   x: number;
   y: number;
   baseline: number;
+  top: number;
   side: 'left' | 'right';
-}> = ({ x, y, baseline, side }) => {
+  label?: string;
+  caption?: string;
+}> = ({ x, y, baseline, top, side, label = '18h · Proibição', caption = PROHIBITION_CAPTION }) => {
   const labelX = side === 'left' ? x - 14 : x + 14;
   return (
     <g className="prohibition-mark" pointerEvents="none">
       <line
         x1={x}
-        y1={y + 8}
+        y1={top}
         x2={x}
         y2={baseline}
         stroke="var(--danger)"
@@ -39,9 +47,9 @@ export const ProhibitionMark: React.FC<{
         fontWeight="700"
         fill="var(--danger)"
       >
-        18h · Proibição
+        {label}
       </text>
-      <title>{PROHIBITION_CAPTION}</title>
+      <title>{caption}</title>
     </g>
   );
 };
