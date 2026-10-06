@@ -1,13 +1,28 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { AmbientGlow } from '../components/ui/AmbientGlow';
 import { useUser } from '../context/UserContext';
-import { useReviews } from '../context/ReviewsContext';
 import { UserRole } from '../types';
+import { apiGet } from '../lib/http';
 
 interface ProfileViewProps {
   onNavigate: (path: string) => void;
+}
+
+interface ProfilePayload {
+  profile: {
+    email: string;
+    role: UserRole;
+    hold: {
+      legalName: string;
+      cnpj: string;
+      domain: string;
+      status: string;
+      houses: { name: string; host: string }[];
+    } | null;
+  };
+  reviews: { id: number; comment: string | null; created_at: string; brand: string; reply: string | null }[];
 }
 
 const ROLE_LABEL: Record<UserRole, string> = {
@@ -19,7 +34,15 @@ const ROLE_LABEL: Record<UserRole, string> = {
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
   const { user } = useUser();
-  const { reviews } = useReviews();
+  const [profile, setProfile] = useState<ProfilePayload | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!user) return;
+    apiGet<ProfilePayload>('/api/v1/profile')
+      .then(setProfile)
+      .catch((err: Error) => setError(err.message || 'O perfil não carregou.'));
+  }, [user]);
 
   if (!user) {
     return (
@@ -37,7 +60,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
     );
   }
 
-  const myReviews = reviews.filter((r) => r.authorEmail === user.email);
+  const hold = profile?.profile.hold;
+  const reviews = profile?.reviews || [];
 
   return (
     <div className="relative max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-5">
@@ -49,10 +73,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
         <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{user.email}</p>
       </div>
 
+      {error && <p role="alert" className="text-xs" style={{ color: 'var(--status-nao-autorizada)' }}>{error}</p>}
+
       {user.role === 'client' && (
         <GlassCard className="p-5 space-y-2">
           <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            Você acessa só o seu perfil e pode comentar e avaliar qualquer casa autorizada.
+            Você acessa o seu perfil e pode avaliar uma casa autorizada. A avaliação fica na ficha da marca.
           </p>
           <button
             onClick={() => onNavigate('/avaliacoes')}
@@ -64,14 +90,26 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
         </GlassCard>
       )}
 
-      {myReviews.length > 0 && (
+      {hold && (
+        <GlassCard className="p-5 space-y-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>{hold.legalName}</h2>
+          <p>CNPJ {hold.cnpj} · domínio {hold.domain} · {hold.status}</p>
+          {hold.houses.map((house) => (
+            <p key={house.host}>{house.name} · {house.host}</p>
+          ))}
+        </GlassCard>
+      )}
+
+      {reviews.length > 0 && (
         <GlassCard className="p-5 space-y-3">
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>Suas avaliações</h2>
-          {myReviews.map((r) => (
-            <div key={r.id} className="pt-2 text-xs space-y-1" style={{ borderTop: '1px solid var(--color-card-border)' }}>
-              <p className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{r.brand} <span className="font-normal" style={{ color: 'var(--color-text-tertiary)' }}>· {r.createdAt}</span></p>
-              {r.comment && <p style={{ color: 'var(--color-text-secondary)' }}>{r.comment}</p>}
-              {r.reply && <p style={{ color: 'var(--status-autorizada)' }}>Resposta da operadora: {r.reply}</p>}
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>Avaliações da hold</h2>
+          {reviews.map((review) => (
+            <div key={review.id} className="pt-2 text-xs space-y-1" style={{ borderTop: '1px solid var(--color-card-border)' }}>
+              <p className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                {review.brand} <span className="font-normal" style={{ color: 'var(--color-text-tertiary)' }}>· {new Date(review.created_at).toLocaleDateString('pt-BR')}</span>
+              </p>
+              {review.comment && <p style={{ color: 'var(--color-text-secondary)' }}>{review.comment}</p>}
+              {review.reply && <p style={{ color: 'var(--status-autorizada)' }}>Resposta: {review.reply}</p>}
             </div>
           ))}
         </GlassCard>
@@ -79,11 +117,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
 
       {(user.role === 'admin' || user.role === 'super_admin') && (
         <GlassCard className="p-5 space-y-2">
-          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            {user.role === 'super_admin'
-              ? 'Você administra a plataforma, as operadoras e os usuários.'
-              : 'Você administra clientes, responde contestações e modera comentários.'}
-          </p>
           <button
             onClick={() => onNavigate('/painel')}
             className="block text-xs font-semibold cursor-pointer hover:underline"
@@ -91,23 +124,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
           >
             Abrir painel →
           </button>
-          {user.role === 'super_admin' && (
-            <button
-              onClick={() => onNavigate('/operadora')}
-              className="block text-xs font-semibold cursor-pointer hover:underline"
-              style={{ color: 'var(--status-dado-declarado)' }}
-            >
-              Abrir operadoras e casas →
-            </button>
-          )}
         </GlassCard>
       )}
 
       {user.role === 'operator' && (
-        <GlassCard className="p-5 space-y-2">
-          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            A área da operadora reúne as casas na lista da SPA/MF, os comentários, as contestações e as possíveis cópias.
-          </p>
+        <GlassCard className="p-5">
           <button
             onClick={() => onNavigate('/operadora')}
             className="inline-flex items-center gap-1 text-xs font-semibold cursor-pointer hover:underline"
