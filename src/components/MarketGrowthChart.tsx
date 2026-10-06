@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { MARKET_SERIES_DATA } from '../data/mockData';
+import { SeriesPoint } from '../lib/realData';
 import { GlassCard } from './ui/GlassCard';
 import { BrandWatermark } from './brand/BetLegalBrand';
 import { useTheme } from '../context/ThemeContext';
@@ -14,17 +14,26 @@ const PAD_BOTTOM = 24;
 const pctFmt = (n: number) =>
   `${n >= 0 ? '+' : ''}${n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 
-export const MarketGrowthChart: React.FC = () => {
+export const MarketGrowthChart: React.FC<{ points?: SeriesPoint[] }> = ({ points = [] }) => {
   const { resolvedTheme } = useTheme();
   const [setChartNode, width] = useChartWidth(640);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
-  const months = MARKET_SERIES_DATA.monthlyBlockGrowth;
+  const months = useMemo(() => {
+    const byMonth = new Map<string, SeriesPoint>();
+    for (const point of points) byMonth.set(point.day.slice(0, 7), point);
+    return Array.from(byMonth.entries()).map(([month, point]) => ({
+      month,
+      blocks: point.unauthorized_blocked,
+      authorized: point.authorized,
+    }));
+  }, [points]);
   const lastIndex = months.length - 1;
 
   const series = useMemo(() => {
-    const baseBlocks = months[0].blocks;
-    const baseAuthorized = months[0].authorized;
+    if (months.length < 2) return [];
+    const baseBlocks = months[0].blocks || 1;
+    const baseAuthorized = months[0].authorized || 1;
     return months.map((m) => ({
       month: m.month,
       blocks: m.blocks,
@@ -33,6 +42,14 @@ export const MarketGrowthChart: React.FC = () => {
       authorizedPct: (m.authorized / baseAuthorized - 1) * 100,
     }));
   }, [months]);
+
+  if (months.length < 2) {
+    return (
+      <GlassCard className="p-6">
+        <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>A série mensal vem de /api/v1/timeseries e ainda não carregou.</p>
+      </GlassCard>
+    );
+  }
 
   const plotWidth = Math.max(width - PAD_LEFT - PAD_RIGHT, 1);
   const plotHeight = HEIGHT - PAD_TOP - PAD_BOTTOM;
