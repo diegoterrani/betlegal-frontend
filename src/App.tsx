@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BetEntity, RegulatoryChange } from './types';
-import { INITIAL_ENTITIES, REGULATORY_CHANGES } from './data/mockData';
-import { fetchRealEntities, fetchRealChanges } from './lib/realData';
+import { fetchRealChanges, fetchRealEntities } from './lib/realData';
 import { ThemeProvider } from './context/ThemeContext';
 import { UserProvider } from './context/UserContext';
 import { ReviewsProvider } from './context/ReviewsContext';
@@ -11,12 +10,12 @@ import { ShareModal } from './components/ShareModal';
 import { HistoryModal } from './components/HistoryModal';
 import { QuickSearchModal } from './components/QuickSearchModal';
 
-// Views
 import { HomeView } from './views/HomeView';
 import { SearchView } from './views/SearchView';
 import { AuthorizedView } from './views/AuthorizedView';
 import { RadarView } from './views/RadarView';
-import { DomainDetailView } from './views/DomainDetailView';
+import { DomainRoute } from './views/DomainRoute';
+import { BrandView } from './views/BrandView';
 import { ChangesView } from './views/ChangesView';
 import { SeriesView } from './views/SeriesView';
 import { ReviewsView } from './views/ReviewsView';
@@ -32,260 +31,267 @@ import { AboutView } from './views/AboutView';
 import { SourcesView } from './views/SourcesView';
 import { PrivacyView } from './views/PrivacyView';
 import { ProfileView } from './views/ProfileView';
+import { ConfirmView } from './views/ConfirmView';
 import { NotFoundView } from './views/NotFoundView';
 
-const KNOWN_PATHS = [
-  '/', '/busca', '/autorizadas', '/radar', '/mudancas', '/series', '/avaliacoes',
-  '/metodologia', '/sobre', '/fontes', '/privacidade', '/contestar', '/api',
-  '/painel', '/operadora', '/noticias', '/entrar', '/criar-conta', '/perfil',
-];
+const ALIASES: Record<string, string> = {
+  '/nao-autorizadas': '/radar',
+  '/ranking': '/avaliacoes',
+  '/dados': '/series',
+  '/cadastrar': '/criar-conta',
+  '/operador': '/operadora',
+};
 
-function isKnownPath(path: string): boolean {
-  return KNOWN_PATHS.includes(path) || path.startsWith('/dominio/');
+function locationPath(): string {
+  if (typeof window === 'undefined') return '/';
+  return `${window.location.pathname}${window.location.search}` || '/';
 }
 
-export default function App() {
-  const [currentPath, setCurrentPath] = useState<string>('/');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [entities, setEntities] = useState<BetEntity[]>(INITIAL_ENTITIES);
-  const [changes] = useState<RegulatoryChange[]>(REGULATORY_CHANGES);
+function cleanOf(path: string): string {
+  const bare = (path.split('?')[0] || '/').replace(/\/+$/, '') || '/';
+  return ALIASES[bare] ?? bare;
+}
 
-  // Dados reais (read-only) do Supabase de prod, usados nas páginas públicas de verificação.
-  // O painel admin e a área da operadora continuam no mock curado (entities/changes acima),
-  // porque dependem de slugs específicos (CLONE_LINKS, OPERATOR_DESK) só presentes no mock.
-  const [publicEntities, setPublicEntities] = useState<BetEntity[]>(INITIAL_ENTITIES);
-  const [publicChanges, setPublicChanges] = useState<RegulatoryChange[]>(REGULATORY_CHANGES);
+function queryOf(path: string): URLSearchParams {
+  return new URLSearchParams(path.includes('?') ? path.split('?')[1] : '');
+}
 
-  useEffect(() => {
-    let cancelled = false;
-    fetchRealEntities().then((real) => {
-      if (!cancelled && real && real.length > 0) setPublicEntities(real);
-    });
-    fetchRealChanges().then((real) => {
-      if (!cancelled && real && real.length > 0) setPublicChanges(real);
-    });
-    return () => { cancelled = true; };
-  }, []);
+const KNOWN = new Set([
+  '/', '/busca', '/autorizadas', '/radar', '/mudancas', '/series', '/avaliacoes',
+  '/metodologia', '/sobre', '/fontes', '/privacidade', '/contestar', '/api',
+  '/painel', '/painel/clones', '/operadora', '/noticias', '/entrar', '/criar-conta',
+  '/perfil', '/confirmar',
+]);
 
-  // Selected detail item for /dominio/:host
-  const [activeDomainDetail, setActiveDomainDetail] = useState<{ entity: BetEntity; host: string } | null>(null);
+function isKnown(path: string): boolean {
+  return KNOWN.has(path) || path.startsWith('/dominio/') || path.startsWith('/marca/');
+}
 
-  // Modals state
+function Shell() {
+  const [currentPath, setCurrentPath] = useState<string>(locationPath);
+  const [entities, setEntities] = useState<BetEntity[]>([]);
+  const [changes, setChanges] = useState<RegulatoryChange[]>([]);
+  const [catalogState, setCatalogState] = useState<'loading' | 'ready' | 'error'>('loading');
+
   const [shareData, setShareData] = useState<{ entity: BetEntity; host: string } | null>(null);
   const [historyEntity, setHistoryEntity] = useState<BetEntity | null>(null);
   const [quickSearchOpen, setQuickSearchOpen] = useState(false);
 
-  // Listen to hash or manual state navigation
-  const navigate = (path: string, param?: any) => {
+  useEffect(() => {
+    const onPop = () => setCurrentPath(locationPath());
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  useEffect(() => {
+    const clean = cleanOf(currentPath);
+    document.title = clean === '/' ? 'Bet Legal' : `Bet Legal · ${clean}`;
+  }, [currentPath]);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([fetchRealEntities(), fetchRealChanges(200)])
+      .then(([nextEntities, nextChanges]) => {
+        if (cancelled) return;
+        if (!nextEntities) {
+          setCatalogState('error');
+          return;
+        }
+        setEntities(nextEntities);
+        setChanges(nextChanges || []);
+        setCatalogState('ready');
+      })
+      .catch(() => {
+        if (!cancelled) setCatalogState('error');
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const navigate = (path: string) => {
+    const next = path.startsWith('/') ? path : `/${path}`;
+    if (next === '/mudancas/feed.xml' || next.startsWith('/confirmar?')) {
+      window.location.assign(next);
+      return;
+    }
+    window.history.pushState({ betlegal: true }, '', next);
+    setCurrentPath(next);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    setCurrentPath(path);
   };
+
+  const openDomain = (entity: BetEntity, host?: string) => {
+    const target = host || entity.domains[0]?.host;
+    if (!target) return;
+    navigate(`/dominio/${encodeURIComponent(target)}`);
+  };
+
+  const cleanPath = cleanOf(currentPath);
+  const params = queryOf(currentPath);
+  const searchQuery = cleanPath === '/busca' ? (params.get('q') || '') : '';
 
   const handleSearchSubmit = (query: string) => {
-    setSearchQuery(query);
-    navigate('/busca');
+    navigate(`/busca?q=${encodeURIComponent(query)}`);
   };
 
-  const handleOpenShare = (entity: BetEntity, host: string) => {
-    setShareData({ entity, host });
-  };
-
-  const handleOpenHistory = (entity: BetEntity) => {
-    setHistoryEntity(entity);
-  };
-
-  const handleOpenReport = (entity: BetEntity, host: string) => {
-    navigate('/contestar');
-  };
-
-  const handleViewDomainDetail = (entity: BetEntity) => {
-    const host = entity.domains[0]?.host || `${entity.slug}.bet.br`;
-    setActiveDomainDetail({ entity, host });
-    navigate(`/dominio/${host}`);
-  };
+  let view: React.ReactNode = null;
+  if (cleanPath === '/') {
+    view = (
+      <HomeView
+        entities={entities}
+        changes={changes}
+        catalogState={catalogState}
+        onSearchSubmit={handleSearchSubmit}
+        onNavigate={navigate}
+        onOpenHistory={setHistoryEntity}
+        onShare={(entity, host) => setShareData({ entity, host })}
+        onReport={() => navigate('/contestar')}
+        onViewDetails={(entity) => openDomain(entity)}
+      />
+    );
+  } else if (cleanPath === '/busca') {
+    view = (
+      <SearchView
+        entities={entities}
+        initialQuery={searchQuery}
+        onOpenHistory={setHistoryEntity}
+        onShare={(entity, host) => setShareData({ entity, host })}
+        onReport={() => navigate('/contestar')}
+        onViewDetails={(entity) => openDomain(entity)}
+      />
+    );
+  } else if (cleanPath === '/autorizadas') {
+    view = (
+      <AuthorizedView
+        entities={entities}
+        onOpenHistory={setHistoryEntity}
+        onShare={(entity, host) => setShareData({ entity, host })}
+        onReport={() => navigate('/contestar')}
+        onViewDetails={(entity) => openDomain(entity)}
+      />
+    );
+  } else if (cleanPath === '/radar') {
+    view = (
+      <RadarView
+        entities={entities}
+        onOpenHistory={setHistoryEntity}
+        onShare={(entity, host) => setShareData({ entity, host })}
+        onReport={() => navigate('/contestar')}
+        onViewDetails={(entity) => openDomain(entity)}
+      />
+    );
+  } else if (cleanPath.startsWith('/dominio/')) {
+    const host = decodeURIComponent(cleanPath.slice('/dominio/'.length));
+    view = (
+      <DomainRoute
+        host={host}
+        entities={entities}
+        onBack={() => navigate('/busca')}
+        onShare={(entity, domainHost) => setShareData({ entity, host: domainHost })}
+        onReport={() => navigate(`/contestar?url=${encodeURIComponent(host)}`)}
+        onNavigate={navigate}
+      />
+    );
+  } else if (cleanPath.startsWith('/marca/')) {
+    const slug = decodeURIComponent(cleanPath.slice('/marca/'.length));
+    view = <BrandView slug={slug} onNavigate={navigate} />;
+  } else if (cleanPath === '/mudancas') {
+    view = (
+      <ChangesView
+        changes={changes}
+        onSelectBrand={(brand) => navigate(`/busca?q=${encodeURIComponent(brand)}`)}
+      />
+    );
+  } else if (cleanPath === '/series') {
+    view = <SeriesView />;
+  } else if (cleanPath === '/avaliacoes') {
+    view = (
+      <ReviewsView
+        entities={entities}
+        onViewDetails={(entity) => openDomain(entity)}
+        onNavigate={navigate}
+      />
+    );
+  } else if (cleanPath === '/metodologia') {
+    view = <MethodologyView onNavigate={navigate} />;
+  } else if (cleanPath === '/sobre') {
+    view = <AboutView onNavigate={navigate} />;
+  } else if (cleanPath === '/fontes') {
+    view = <SourcesView />;
+  } else if (cleanPath === '/privacidade') {
+    view = <PrivacyView />;
+  } else if (cleanPath === '/contestar') {
+    view = <ContestView initialHost={params.get('url') || ''} />;
+  } else if (cleanPath === '/api') {
+    view = <ApiDocsView entities={entities} />;
+  } else if (cleanPath === '/painel' || cleanPath === '/painel/clones') {
+    view = (
+      <AdminPanelView
+        onNavigate={navigate}
+        initialTab={cleanPath === '/painel/clones' ? 'clones' : 'visao'}
+      />
+    );
+  } else if (cleanPath === '/operadora') {
+    view = <OperatorDeskView onNavigate={navigate} />;
+  } else if (cleanPath === '/noticias') {
+    view = <NewsView />;
+  } else if (cleanPath === '/entrar') {
+    view = (
+      <LoginView
+        onNavigate={navigate}
+        redirectPath={params.get('redirect') || params.get('next') || ''}
+      />
+    );
+  } else if (cleanPath === '/criar-conta') {
+    view = <RegisterView onNavigate={navigate} />;
+  } else if (cleanPath === '/perfil') {
+    view = <ProfileView onNavigate={navigate} />;
+  } else if (cleanPath === '/confirmar') {
+    view = <ConfirmView />;
+  } else if (!isKnown(cleanPath)) {
+    view = <NotFoundView onNavigate={navigate} />;
+  }
 
   return (
+    <div
+      className="min-h-screen flex flex-col transition-colors"
+      style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+    >
+      <Header
+        currentPath={cleanPath}
+        onNavigate={navigate}
+        onOpenQuickSearch={() => setQuickSearchOpen(true)}
+      />
+      {catalogState === 'error' && cleanPath !== '/entrar' && (
+        <p className="max-w-6xl mx-auto px-4 pt-4 text-xs" role="alert" style={{ color: 'var(--status-nao-autorizada)' }}>
+          O catálogo de produção não respondeu. As listas podem estar vazias até a próxima tentativa.
+        </p>
+      )}
+      <main className="flex-1">{view}</main>
+      <Footer onNavigate={navigate} />
+      {shareData && (
+        <ShareModal entity={shareData.entity} host={shareData.host} onClose={() => setShareData(null)} />
+      )}
+      {historyEntity && (
+        <HistoryModal entity={historyEntity} onClose={() => setHistoryEntity(null)} />
+      )}
+      <QuickSearchModal
+        isOpen={quickSearchOpen}
+        onClose={() => setQuickSearchOpen(false)}
+        entities={entities}
+        onSelectEntity={(entity) => openDomain(entity)}
+        onSelectRoute={(path) => navigate(path)}
+      />
+    </div>
+  );
+}
+
+export default function App() {
+  return (
     <UserProvider>
-    <ReviewsProvider>
-    <ThemeProvider>
-      <div
-        className="min-h-screen flex flex-col transition-colors"
-        style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
-      >
-
-        {/* Top Bar Header */}
-        <Header
-          currentPath={currentPath}
-          onNavigate={(path) => navigate(path)}
-          onOpenQuickSearch={() => setQuickSearchOpen(true)}
-        />
-
-        {/* Main View Router */}
-        <main className="flex-1">
-          {currentPath === '/' && (
-            <HomeView
-              entities={publicEntities}
-              changes={publicChanges}
-              onSearchSubmit={handleSearchSubmit}
-              onNavigate={(path) => navigate(path)}
-              onOpenHistory={handleOpenHistory}
-              onShare={handleOpenShare}
-              onReport={handleOpenReport}
-              onViewDetails={handleViewDomainDetail}
-            />
-          )}
-
-          {currentPath === '/busca' && (
-            <SearchView
-              entities={publicEntities}
-              initialQuery={searchQuery}
-              onOpenHistory={handleOpenHistory}
-              onShare={handleOpenShare}
-              onReport={handleOpenReport}
-              onViewDetails={handleViewDomainDetail}
-            />
-          )}
-
-          {currentPath === '/autorizadas' && (
-            <AuthorizedView
-              entities={publicEntities}
-              onOpenHistory={handleOpenHistory}
-              onShare={handleOpenShare}
-              onReport={handleOpenReport}
-              onViewDetails={handleViewDomainDetail}
-            />
-          )}
-
-          {currentPath === '/radar' && (
-            <RadarView
-              entities={publicEntities}
-              onOpenHistory={handleOpenHistory}
-              onShare={handleOpenShare}
-              onReport={handleOpenReport}
-              onViewDetails={handleViewDomainDetail}
-            />
-          )}
-
-          {currentPath.startsWith('/dominio/') && activeDomainDetail && (
-            <DomainDetailView
-              entity={activeDomainDetail.entity}
-              hostName={activeDomainDetail.host}
-              onBack={() => navigate('/busca')}
-              onShare={handleOpenShare}
-              onReport={handleOpenReport}
-              onNavigate={(path) => navigate(path)}
-            />
-          )}
-
-          {currentPath === '/mudancas' && (
-            <ChangesView
-              changes={publicChanges}
-              onSelectBrand={(brand) => {
-                setSearchQuery(brand);
-                navigate('/busca');
-              }}
-            />
-          )}
-
-          {currentPath === '/series' && (
-            <SeriesView />
-          )}
-
-          {currentPath === '/avaliacoes' && (
-            <ReviewsView
-              entities={publicEntities}
-              onViewDetails={handleViewDomainDetail}
-              onNavigate={(path) => navigate(path)}
-            />
-          )}
-
-          {currentPath === '/metodologia' && (
-            <MethodologyView onNavigate={(path) => navigate(path)} />
-          )}
-
-          {currentPath === '/sobre' && (
-            <AboutView onNavigate={(path) => navigate(path)} />
-          )}
-
-          {currentPath === '/fontes' && (
-            <SourcesView />
-          )}
-
-          {currentPath === '/privacidade' && (
-            <PrivacyView />
-          )}
-
-          {currentPath === '/contestar' && (
-            <ContestView initialHost={activeDomainDetail?.host || ''} />
-          )}
-
-          {currentPath === '/api' && (
-            <ApiDocsView entities={publicEntities} />
-          )}
-
-          {currentPath === '/painel' && (
-            <AdminPanelView entities={entities} publicEntities={publicEntities} onNavigate={(path) => navigate(path)} />
-          )}
-
-          {currentPath === '/operadora' && (
-            <OperatorDeskView entities={entities} onNavigate={(path) => navigate(path)} />
-          )}
-
-          {currentPath === '/noticias' && (
-            <NewsView />
-          )}
-
-          {currentPath === '/entrar' && (
-            <LoginView onNavigate={(path) => navigate(path)} />
-          )}
-
-          {currentPath === '/criar-conta' && (
-            <RegisterView onNavigate={(path) => navigate(path)} />
-          )}
-
-          {currentPath === '/perfil' && (
-            <ProfileView onNavigate={(path) => navigate(path)} />
-          )}
-
-          {!isKnownPath(currentPath) && (
-            <NotFoundView onNavigate={(path) => navigate(path)} />
-          )}
-        </main>
-
-        {/* Footer */}
-        <Footer onNavigate={(path) => navigate(path)} />
-
-        {/* Share Modal */}
-        {shareData && (
-          <ShareModal
-            entity={shareData.entity}
-            host={shareData.host}
-            onClose={() => setShareData(null)}
-          />
-        )}
-
-        {/* History Modal */}
-        {historyEntity && (
-          <HistoryModal
-            entity={historyEntity}
-            onClose={() => setHistoryEntity(null)}
-          />
-        )}
-
-        {/* Quick Search Modal */}
-        <QuickSearchModal
-          isOpen={quickSearchOpen}
-          onClose={() => setQuickSearchOpen(false)}
-          entities={publicEntities}
-          onSelectEntity={(entity) => {
-            handleViewDomainDetail(entity);
-          }}
-          onSelectRoute={(path) => navigate(path)}
-        />
-
-      </div>
-    </ThemeProvider>
-    </ReviewsProvider>
+      <ReviewsProvider>
+        <ThemeProvider>
+          <Shell />
+        </ThemeProvider>
+      </ReviewsProvider>
     </UserProvider>
   );
 }

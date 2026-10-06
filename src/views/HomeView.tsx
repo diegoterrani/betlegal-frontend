@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BetEntity, RegulatoryChange } from '../types';
 import { BetLegalCard } from '../components/BetLegalCard';
 import { GlassCard } from '../components/ui/GlassCard';
@@ -15,11 +15,13 @@ import {
   History,
   AlertTriangle,
 } from 'lucide-react';
-import { AUTHORIZATION_TREND, AUTHORIZATION_TREND_ANNOTATION } from '../data/mockData';
+import { AuthorizationTrendPoint } from '../data/mockData';
+import { fetchPublicStats, fetchTimeseries, PublicStats, SeriesPoint } from '../lib/realData';
 
 interface HomeViewProps {
   entities: BetEntity[];
   changes: RegulatoryChange[];
+  catalogState?: 'loading' | 'ready' | 'error';
   onSearchSubmit: (query: string) => void;
   onNavigate: (path: string) => void;
   onOpenHistory: (entity: BetEntity) => void;
@@ -31,6 +33,7 @@ interface HomeViewProps {
 export const HomeView: React.FC<HomeViewProps> = ({
   entities,
   changes,
+  catalogState = 'ready',
   onSearchSubmit,
   onNavigate,
   onOpenHistory,
@@ -40,6 +43,24 @@ export const HomeView: React.FC<HomeViewProps> = ({
 }) => {
   const [searchInput, setSearchInput] = useState('');
   const { resolvedTheme } = useTheme();
+  const [stats, setStats] = useState<PublicStats | null>(null);
+  const [series, setSeries] = useState<SeriesPoint[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPublicStats().then((next) => { if (!cancelled) setStats(next); }).catch(() => {});
+    fetchTimeseries().then((next) => { if (!cancelled) setSeries(next); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  const trend: AuthorizationTrendPoint[] = series
+    .filter((_, index) => index % 7 === 0 || index === series.length - 1)
+    .map((point) => ({
+      date: point.day,
+      displayDate: point.day.slice(8, 10) + '/' + point.day.slice(5, 7),
+      authorized: point.authorized,
+      unauthorized: point.unauthorized,
+    }));
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,14 +140,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </button>
         </div>
 
-        <DetectionBreakdownCards />
+        <DetectionBreakdownCards stats={stats} />
 
         <div className="mt-5">
-          <AuthorizationTrendChart data={AUTHORIZATION_TREND} annotation={AUTHORIZATION_TREND_ANNOTATION} />
+          {trend.length > 1 ? (
+            <AuthorizationTrendChart data={trend} />
+          ) : (
+            <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>A série diária ainda não chegou.</p>
+          )}
         </div>
 
         <div className="mt-4">
-          <MarketGrowthChart />
+          <MarketGrowthChart points={series} />
         </div>
       </section>
 
@@ -202,6 +227,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </button>
         </div>
 
+        {catalogState === 'loading' && (
+          <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>O catálogo publicado está carregando.</p>
+        )}
+        {catalogState === 'error' && featuredEntities.length === 0 && (
+          <p className="text-xs" style={{ color: 'var(--status-nao-autorizada)' }}>O catálogo não carregou nesta origem.</p>
+        )}
         <div className="grid grid-cols-1 gap-4">
           {featuredEntities.map((item) => (
             <BetLegalCard

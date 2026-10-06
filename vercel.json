@@ -1,5 +1,14 @@
 {
   "rewrites": [
+    { "source": "/api/:path*", "destination": "https://api.bet-legal.org/api/:path*" },
+    { "source": "/entrar/enviar", "destination": "https://api.bet-legal.org/entrar/enviar" },
+    { "source": "/cadastrar/enviar", "destination": "https://api.bet-legal.org/cadastrar/enviar" },
+    { "source": "/contestar/enviar", "destination": "https://api.bet-legal.org/contestar/enviar" },
+    { "source": "/sair", "destination": "https://api.bet-legal.org/sair" },
+    { "source": "/confirmar", "destination": "https://api.bet-legal.org/confirmar" },
+    { "source": "/marca/:slug/avaliar", "destination": "https://api.bet-legal.org/marca/:slug/avaliar" },
+    { "source": "/mudancas/feed.xml", "destination": "https://api.bet-legal.org/mudancas/feed.xml" },
+    { "source": "/screenshots/:path*", "destination": "https://api.bet-legal.org/screenshots/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

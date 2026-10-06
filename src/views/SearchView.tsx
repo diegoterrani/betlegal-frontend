@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { BetEntity } from '../types';
 import { BetLegalCard } from '../components/BetLegalCard';
 import { GlassCard } from '../components/ui/GlassCard';
@@ -10,6 +10,7 @@ import {
   Download,
   HelpCircle,
 } from 'lucide-react';
+import { fetchSearch } from '../lib/realData';
 
 interface SearchViewProps {
   entities: BetEntity[];
@@ -34,9 +35,29 @@ export const SearchView: React.FC<SearchViewProps> = ({
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedSphere, setSelectedSphere] = useState<string>('all');
   const [selectedLiveness, setSelectedLiveness] = useState<string>('all');
+  const [remote, setRemote] = useState<BetEntity[] | null>(null);
+
+  useEffect(() => {
+    setSearchQuery(initialQuery);
+  }, [initialQuery]);
+
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      setRemote(null);
+      return;
+    }
+    let cancelled = false;
+    fetchSearch(q)
+      .then((rows) => { if (!cancelled) setRemote(rows); })
+      .catch(() => { if (!cancelled) setRemote(null); });
+    return () => { cancelled = true; };
+  }, [searchQuery]);
+
+  const pool = remote ?? entities;
 
   const filteredEntities = useMemo(() => {
-    return entities.filter((entity) => {
+    return pool.filter((entity) => {
       const q = searchQuery.trim().toLowerCase();
       let matchesText = true;
       if (q) {
@@ -70,7 +91,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
 
       return matchesText && matchesStatus && matchesSphere && matchesLiveness;
     });
-  }, [entities, searchQuery, selectedStatus, selectedSphere, selectedLiveness]);
+  }, [pool, searchQuery, selectedStatus, selectedSphere, selectedLiveness]);
 
   const handleExportCSV = () => {
     const headers = ['Marca', 'Razao_Social', 'CNPJ', 'Status_Regulatorio', 'Esfera', 'Protocolo_SIGAP', 'Dominio_Principal', 'Data_Verificacao'];

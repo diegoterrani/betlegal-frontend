@@ -1,15 +1,22 @@
 import React from 'react';
-import { AUTHORIZATION_TREND, DETECTION_BREAKDOWN } from '../data/mockData';
+import { PublicStats } from '../lib/realData';
 
-export const DetectionBreakdownCards: React.FC = () => {
-  const authorizedTotal = AUTHORIZATION_TREND[AUTHORIZATION_TREND.length - 1].authorized;
-  const { authorizedBySphere, unauthorizedTotal, unauthorizedLiveness, today } = DETECTION_BREAKDOWN;
-  const onlinePct = (unauthorizedLiveness.online / unauthorizedTotal) * 100;
+export const DetectionBreakdownCards: React.FC<{ stats: PublicStats | null }> = ({ stats }) => {
+  const by = stats?.byStatus || {};
+  const nacional = by.AUTORIZADA_NACIONAL || 0;
+  const estadual = by.AUTORIZADA_ESTADUAL || 0;
+  const judicial = by.DECISAO_JUDICIAL || 0;
+  const authorizedTotal = nacional + estadual + judicial;
+  const unauthorizedTotal = (by.NAO_AUTORIZADA_DETECTADA || 0) + (by.BLOQUEADA_ANATEL || 0) + (by.SUSPENSA_REVOGADA || 0) + (by.INATIVA || 0);
+  const detected = by.NAO_AUTORIZADA_DETECTADA || 0;
+  const blocked = by.BLOQUEADA_ANATEL || 0;
+  const inactive = by.INATIVA || 0;
+  const detectedPct = unauthorizedTotal > 0 ? (detected / unauthorizedTotal) * 100 : 0;
 
   const livenessSegments = [
-    { label: 'Online', value: unauthorizedLiveness.online, color: 'var(--live-fg)' },
-    { label: 'Fora do ar', value: unauthorizedLiveness.offline, color: 'var(--color-text-secondary)' },
-    { label: 'Sem checagem', value: unauthorizedLiveness.unchecked, color: 'var(--color-text-tertiary)' },
+    { label: 'Detectadas', value: detected, color: 'var(--live-fg)' },
+    { label: 'Bloqueadas', value: blocked, color: 'var(--color-text-secondary)' },
+    { label: 'Inativas', value: inactive, color: 'var(--color-text-tertiary)' },
   ];
 
   return (
@@ -28,7 +35,7 @@ export const DetectionBreakdownCards: React.FC = () => {
           </div>
           <div className="text-sm font-semibold mt-1.5" style={{ color: 'var(--color-text-primary)' }}>Autorizadas</div>
           <div className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
-            {authorizedBySphere.nacional} nacionais · {authorizedBySphere.estadual} estaduais · {authorizedBySphere.judicial} por decisão judicial
+            {nacional} nacionais · {estadual} estaduais · {judicial} por decisão judicial
           </div>
         </div>
 
@@ -52,18 +59,18 @@ export const DetectionBreakdownCards: React.FC = () => {
       {/* Liveness breakdown — mesmo formato do antigo "Mercado agora" */}
       <div className="glass-card rounded p-6 sm:p-8">
         <div className="text-[11px] font-mono font-medium uppercase tracking-[0.2em]" style={{ color: 'var(--color-text-tertiary)' }}>
-          Das {unauthorizedTotal.toLocaleString('pt-BR')} detectadas
+          Das {unauthorizedTotal.toLocaleString('pt-BR')} fora da autorização vigente
         </div>
         <h3 className="text-xl sm:text-2xl font-semibold mt-1" style={{ color: 'var(--color-text-primary)' }}>
-          <span style={{ color: 'var(--live-fg)' }}>{onlinePct.toFixed(0)}%</span> das não autorizadas detectadas ainda respondem online
+          <span style={{ color: 'var(--live-fg)' }}>{detectedPct.toFixed(0)}%</span> ainda estão só como detectadas, sem bloqueio publicado
         </h3>
         <p className="text-xs mt-1 mb-5" style={{ color: 'var(--color-text-tertiary)' }}>
-          {unauthorizedLiveness.offlineSinceAnnouncement} domínios saíram do ar desde o anúncio de 25/09 às 18h.
+          Contagem do catálogo publicado. Detectadas, bloqueadas e inativas são situações diferentes.
         </p>
 
         <div className="h-3 rounded-full overflow-hidden flex" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
           {livenessSegments.map((seg) => (
-            <div key={seg.label} style={{ width: `${(seg.value / unauthorizedTotal) * 100}%`, backgroundColor: seg.color }} title={seg.label} />
+            <div key={seg.label} style={{ width: `${unauthorizedTotal ? (seg.value / unauthorizedTotal) * 100 : 0}%`, backgroundColor: seg.color }} title={seg.label} />
           ))}
         </div>
 
@@ -82,32 +89,6 @@ export const DetectionBreakdownCards: React.FC = () => {
         </div>
       </div>
 
-      {/* Today deltas */}
-      <div>
-        <div className="text-[11px] font-mono font-medium uppercase tracking-[0.2em] mb-2" style={{ color: 'var(--color-text-tertiary)' }}>
-          Hoje, já dentro das detectadas
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="glass-card rounded p-4">
-            <div className="font-mono text-3xl font-medium tracking-tight" style={{ color: 'var(--live-fg)' }}>
-              {today.newlyDetected}
-            </div>
-            <div className="text-sm font-semibold mt-1.5" style={{ color: 'var(--color-text-primary)' }}>Não autorizadas — detectadas hoje</div>
-            <div className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
-              Primeira vez que a verificação de página classifica o domínio como não autorizado. Sonda de disponibilidade não entra.
-            </div>
-          </div>
-          <div className="glass-card rounded p-4">
-            <div className="font-mono text-3xl font-medium tracking-tight" style={{ color: 'var(--color-text-secondary)' }}>
-              {today.backOnline}
-            </div>
-            <div className="text-sm font-semibold mt-1.5" style={{ color: 'var(--color-text-primary)' }}>Não autorizadas — voltaram ao ar hoje</div>
-            <div className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
-              Já eram não autorizadas, estavam fora do ar, e uma leitura de página as encontrou de novo. A sonda não entra.
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

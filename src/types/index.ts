@@ -54,6 +54,8 @@ export interface BrandReputation {
 export interface BetEntity {
   id: string;
   slug: string;
+  /** Slug da marca no catálogo de produção. Avaliações e a ficha /marca usam este valor. */
+  brandSlug?: string;
   brandName: string;
   tradeNames: string[];
   legalName: string;

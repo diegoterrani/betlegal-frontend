@@ -12,11 +12,26 @@ export default defineConfig(() => {
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      proxy: {
+        '/api': { target: 'https://api.bet-legal.org', changeOrigin: true, secure: true },
+        '/entrar/enviar': { target: 'https://api.bet-legal.org', changeOrigin: true, secure: true },
+        '/cadastrar/enviar': { target: 'https://api.bet-legal.org', changeOrigin: true, secure: true },
+        '/contestar/enviar': { target: 'https://api.bet-legal.org', changeOrigin: true, secure: true },
+        '/sair': { target: 'https://api.bet-legal.org', changeOrigin: true, secure: true },
+        '/confirmar': { target: 'https://api.bet-legal.org', changeOrigin: true, secure: true },
+        '/mudancas/feed.xml': { target: 'https://api.bet-legal.org', changeOrigin: true, secure: true },
+        '/screenshots': { target: 'https://api.bet-legal.org', changeOrigin: true, secure: true },
+        '/marca': {
+          target: 'https://api.bet-legal.org',
+          changeOrigin: true,
+          secure: true,
+          bypass(req) {
+            if (req.method !== 'POST') return '/index.html';
+          },
+        },
+      },
     },
   };
 });

@@ -1,52 +1,8 @@
-import { supabase } from './supabaseClient';
+import { apiGet } from './http';
 import { BetEntity, BrandReputation, RegulatoryChange, RegulatoryStatus, LivenessStatus } from '../types';
 
-/** O PostgREST do Supabase limita cada resposta a 100 linhas (max-rows do projeto), não importa
- * o que `.limit()` pede. Para trazer mais que isso, pagina com `.range()` até esgotar ou bater
- * no teto `maxRows`. Busca em lotes pequenos em paralelo (em vez de página a página em série,
- * mas sem exagerar): fetchUnauthorizedReach chama isto 3 vezes ao mesmo tempo, então
- * concurrency=10 aqui vira 30 requisições simultâneas somadas — o suficiente pra esgotar o pool
- * de conexões do Postgres e travar pra sempre (testado em produção: Promise.all nunca resolvia).
- * concurrency=3 mantém o ganho de velocidade (série vira ~1/3 do tempo) com um teto seguro
- * (3 chamadas × 3 = 9 requisições simultâneas no pico). */
-async function fetchAllPages<T>(
-  buildQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>,
-  maxRows: number,
-  pageSize = 100,
-  concurrency = 3
-): Promise<T[]> {
-  const rows: T[] = [];
-  let from = 0;
-  while (from < maxRows) {
-    const batchStarts: number[] = [];
-    for (let i = 0; i < concurrency && from + i * pageSize < maxRows; i++) {
-      batchStarts.push(from + i * pageSize);
-    }
-    const results = await Promise.all(
-      batchStarts.map((start) => {
-        const to = Math.min(start + pageSize, maxRows) - 1;
-        return buildQuery(start, to);
-      })
-    );
-    let reachedEnd = false;
-    for (let i = 0; i < results.length; i++) {
-      const { data, error } = results[i];
-      if (error) throw error;
-      const page = data || [];
-      rows.push(...page);
-      const expectedLen = Math.min(batchStarts[i] + pageSize, maxRows) - batchStarts[i];
-      if (page.length < expectedLen) { reachedEnd = true; break; }
-    }
-    if (reachedEnd) break;
-    from += batchStarts.length * pageSize;
-  }
-  return rows;
-}
-
-/** Leitura via a camada /api/v1 (funções serverless da Vercel, ver api/v1/*.ts), que porta a
- * lógica real de apps/web/lib/queries.ts e catalog.ts de prod — mesmos rótulos, mesma forma de
- * montar o dado. Nenhuma escrita passa por aqui. Se o endpoint falhar ou não existir (dev local
- * sem `vercel dev`, por exemplo), as funções abaixo retornam null e quem chama mantém o mock. */
+/** Leitura da mesma origem em /api/v1. No deploy, o rewrite da Vercel entrega o BFF de
+ * bet-legal.org (papel radar_web). O navegador não fala com o PostgREST. */
 
 function formatCNPJ(raw: string | null | undefined): string {
   const digits = (raw || '').replace(/\D/g, '');
@@ -190,7 +146,15 @@ export async function fetchRealEntities(): Promise<BetEntity[] | null> {
     eventsByHost.set(c.host, list);
   }
 
-  return catalog.domains.map((d) => {
+  return mapDomains(catalog.domains, brandBySlug, eventsByHost);
+}
+
+export function mapDomains(
+  domains: ApiDomainRecord[],
+  brandBySlug: Map<string, ApiBrandRecord>,
+  eventsByHost: Map<string, ApiChangeRecord[]>
+): BetEntity[] {
+  return domains.map((d) => {
     const brand = brandBySlug.get(d.brand_slug);
     const sphere =
       d.status === 'AUTORIZADA_NACIONAL' ? 'federal' as const :
@@ -204,6 +168,7 @@ export async function fetchRealEntities(): Promise<BetEntity[] | null> {
     return {
       id: `domain-${d.host}`,
       slug: slugifyHost(d.host),
+      brandSlug: d.brand_slug || undefined,
       brandName: d.brand_name,
       tradeNames: [],
       legalName: d.operator_name || 'Não identificado',
@@ -274,91 +239,119 @@ export async function fetchRealChanges(limit = 80): Promise<RegulatoryChange[] |
   } satisfies RegulatoryChange));
 }
 
-/** 25/09/2026 18h de Brasília — anúncio da proibição. Mesma constante de
- * apps/web/lib/blocked-after-prohibition.ts em prod. Bloqueio Anatel anterior a esse
- * instante é a lista antiga (11/10/2024), não a detecção do Radar — fica fora do "no ar". */
-const PROHIBITION_AT = '2026-09-25T18:00:00-03:00';
-
 export interface UnauthorizedReach {
   noAr: number;
   foraDoAr: number;
   naoChecado: number;
 }
 
-/** Réplica, via PostgREST direto (sem endpoint próprio ainda), da query SQL de
- * apps/web/lib/identified-reach.ts: estoque de casas não autorizadas identificadas pelo Radar,
- * partido por conectividade. Entram domínios NAO_AUTORIZADA_DETECTADA, INATIVA vindos de
- * NAO_AUTORIZADA_DETECTADA, e BLOQUEADA_ANATEL só se o bloqueio aconteceu a partir da
- * proibição (não a lista antiga). */
+/** GET /api/v1/unauthorized/reach no BFF. A conta (proibição de 25/09/2026) fica no servidor. */
 export async function fetchUnauthorizedReach(): Promise<UnauthorizedReach | null> {
-  const client = supabase;
-  if (!client) return null;
-  try {
-    const [domains, inativaEvents, bloqueioEvents] = await Promise.all([
-      fetchAllPages<{ id: number; active: boolean | null; status: RegulatoryStatus; discovered_via: string | null }>(
-        (from, to) =>
-          client
-            .from('domain')
-            .select('id, active, status, discovered_via')
-            .eq('published', true)
-            .in('status', ['NAO_AUTORIZADA_DETECTADA', 'INATIVA', 'BLOQUEADA_ANATEL'])
-            .range(from, to) as unknown as PromiseLike<{ data: any[] | null; error: any }>,
-        6000
-      ),
-      fetchAllPages<{ domain_id: number }>(
-        (from, to) =>
-          client
-            .from('status_event')
-            .select('domain_id')
-            .eq('from_status', 'NAO_AUTORIZADA_DETECTADA')
-            .eq('to_status', 'INATIVA')
-            .range(from, to) as unknown as PromiseLike<{ data: any[] | null; error: any }>,
-        3000
-      ),
-      fetchAllPages<{ domain_id: number; effective_at: string }>(
-        (from, to) =>
-          client
-            .from('status_event')
-            .select('domain_id, effective_at')
-            .eq('to_status', 'BLOQUEADA_ANATEL')
-            .range(from, to) as unknown as PromiseLike<{ data: any[] | null; error: any }>,
-        3000
-      ),
-    ]);
+  const data = await apiGet<{ no_ar: number; fora_do_ar: number; nao_checado: number }>('/api/v1/unauthorized/reach');
+  return {
+    noAr: Number(data.no_ar || 0),
+    foraDoAr: Number(data.fora_do_ar || 0),
+    naoChecado: Number(data.nao_checado || 0),
+  };
+}
 
-    const inativaFromDetected = new Set(inativaEvents.map((e) => e.domain_id));
+export interface PublicStats {
+  byStatus: Record<string, number>;
+  jurisdiction: { state: string; count: number; pct: number }[];
+  lastRunAt: string | null;
+}
 
-    const lastBloqueioAt = new Map<number, string>();
-    for (const e of bloqueioEvents) {
-      const current = lastBloqueioAt.get(e.domain_id);
-      if (!current || e.effective_at > current) lastBloqueioAt.set(e.domain_id, e.effective_at);
-    }
+export async function fetchPublicStats(): Promise<PublicStats> {
+  const data = await apiGet<{
+    stats?: { by_status?: Record<string, number>; last_successful_run?: { finished_at?: string } | null };
+    jurisdiction?: { state: string; count: number; pct: number }[];
+  }>('/api/v1/stats');
+  return {
+    byStatus: data.stats?.by_status || {},
+    jurisdiction: data.jurisdiction || [],
+    lastRunAt: data.stats?.last_successful_run?.finished_at || null,
+  };
+}
 
-    const seedDatePattern = /^seed:anatel_(\d{4}-\d{2}-\d{2})/;
+export interface SeriesPoint {
+  day: string;
+  authorized: number;
+  unauthorized: number;
+  unauthorized_blocked: number;
+  unauthorized_active: number;
+  authorized_blocked: number;
+}
 
-    const reach: UnauthorizedReach = { noAr: 0, foraDoAr: 0, naoChecado: 0 };
+export async function fetchTimeseries(): Promise<SeriesPoint[]> {
+  const data = await apiGet<{ points?: SeriesPoint[] }>('/api/v1/timeseries');
+  return data.points || [];
+}
 
-    for (const d of domains) {
-      let included = false;
-      if (d.status === 'NAO_AUTORIZADA_DETECTADA') {
-        included = true;
-      } else if (d.status === 'INATIVA') {
-        included = inativaFromDetected.has(d.id);
-      } else if (d.status === 'BLOQUEADA_ANATEL') {
-        const latest = lastBloqueioAt.get(d.id);
-        const seedMatch = d.discovered_via ? seedDatePattern.exec(d.discovered_via) : null;
-        const blockedAt = latest || (seedMatch ? `${seedMatch[1]}T00:00:00-03:00` : null);
-        included = blockedAt ? new Date(blockedAt).getTime() >= new Date(PROHIBITION_AT).getTime() : false;
-      }
-      if (!included) continue;
-      if (d.active === true) reach.noAr += 1;
-      else if (d.active === false) reach.foraDoAr += 1;
-      else reach.naoChecado += 1;
-    }
+export interface NewsItem {
+  id: string;
+  title: string;
+  summary: string | null;
+  url: string;
+  image_url: string | null;
+  published_at: string;
+  topic_label: string;
+  source: { name: string; kind_label: string; paywall: boolean };
+}
 
-    return reach;
-  } catch (err) {
-    console.warn('[realData] Falha ao buscar alcance de não autorizadas do Supabase.', err);
-    return null;
+export async function fetchNews(day?: string): Promise<{ news: NewsItem[]; days: { date: string; count: number }[] }> {
+  const qs = day ? `?day=${encodeURIComponent(day)}` : '';
+  const data = await apiGet<{ news?: NewsItem[]; days?: { date: string; count: number }[] }>(`/api/v1/news${qs}`);
+  return { news: data.news || [], days: data.days || [] };
+}
+
+export async function fetchDomainRecord(host: string): Promise<BetEntity | null> {
+  const data = await apiGet<{ record?: ApiDomainRecord; evidence?: { title?: string | null; fetched_at?: string } | null }>(
+    `/api/v1/domains/${encodeURIComponent(host)}`
+  );
+  if (!data.record?.host) return null;
+  const [entity] = mapDomains([data.record], new Map(), new Map());
+  if (!entity) return null;
+  if (data.evidence?.title) {
+    entity.evidenceSummary = data.evidence.title;
   }
+  return entity;
+}
+
+interface SearchHit {
+  host: string;
+  status: RegulatoryStatus;
+  status_label?: string;
+  active?: boolean | null;
+  brand?: { name: string; slug: string } | null;
+  operator?: { legal_name: string | null; cnpj: string | null } | null;
+  verified_at?: string | null;
+  first_seen_at?: string | null;
+  hosting?: { ip?: string | null; asn?: number | null; cc?: string | null } | null;
+  source?: { name?: string; url?: string } | null;
+}
+
+export async function fetchSearch(query: string): Promise<BetEntity[]> {
+  const data = await apiGet<{ results?: SearchHit[] }>(`/api/v1/search?q=${encodeURIComponent(query)}`);
+  return (data.results || []).map((hit) => {
+    const record: ApiDomainRecord = {
+      host: hit.host,
+      brand_slug: hit.brand?.slug || hit.host,
+      brand_name: hit.brand?.name || hit.host,
+      operator_name: hit.operator?.legal_name || '',
+      operator_cnpj: hit.operator?.cnpj || '',
+      status: hit.status,
+      detection_kind: null,
+      liveness: hit.active === true ? 'NO_AR' : hit.active === false ? 'FORA_DO_AR' : 'NAO_CHECADO',
+      first_seen: hit.first_seen_at || hit.verified_at || new Date().toISOString(),
+      last_seen: hit.verified_at || hit.first_seen_at || new Date().toISOString(),
+      verified_at: hit.verified_at || hit.first_seen_at || new Date().toISOString(),
+      source_name: hit.source?.name || 'Verificação Bet Legal',
+      source_url: hit.source?.url || 'https://www.gov.br/fazenda/pt-br/composicao/orgaos/secretaria-de-premios-e-apostas',
+      evidence_snippet: hit.status_label || hit.status,
+      hosting_ip: hit.hosting?.ip || undefined,
+      hosting_asn: hit.hosting?.asn != null ? `AS${hit.hosting.asn}` : undefined,
+      hosting_country: hit.hosting?.cc || undefined,
+    };
+    return mapDomains([record], new Map(), new Map())[0];
+  });
 }

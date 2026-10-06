@@ -36,6 +36,14 @@ export const AuthorizationTrendChart: React.FC<AuthorizationTrendChartProps> = (
   );
   const midValue = Math.round(maxValue / 2);
 
+  if (data.length < 2) {
+    return (
+      <GlassCard className="p-6">
+        <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>A série diária vem de /api/v1/timeseries e ainda não carregou.</p>
+      </GlassCard>
+    );
+  }
+
   const xScale = (i: number) => PAD_LEFT + (i / lastIndex) * plotWidth;
   const yScale = (v: number) => PAD_TOP + plotHeight - (v / maxValue) * plotHeight;
   const baselineY = PAD_TOP + plotHeight;
