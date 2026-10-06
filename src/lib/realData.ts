@@ -123,7 +123,7 @@ async function fetchJson<T>(path: string): Promise<T | null> {
   }
 }
 
-const STATE_FROM_SOURCE = /Loteria estadual \\(([A-Z]{2})\\)/;
+const STATE_FROM_SOURCE = /Loteria estadual \(([A-Z]{2})\)/;
 
 /** Busca o catálogo real (api/v1/catalog) e o feed de mudanças (api/v1/changes), e monta
  * BetEntity[] — uma entidade por domínio, refletindo o status real por domínio, não por marca.
