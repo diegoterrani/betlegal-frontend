@@ -27,7 +27,7 @@ export const ReviewsView: React.FC<ReviewsViewProps> = ({ entities, onViewDetail
   const [ratingTarget, setRatingTarget] = useState<BetEntity | null>(null);
   const [expandedSlug, setExpandedSlug] = useState<string | null>(null);
   const { user } = useUser();
-  const { reviews, addReview } = useReviews();
+  const { reviews, addReview, loadBrand } = useReviews();
 
   const ratedEntities = entities
     .filter(e => e.reputation && e.reputation.complaintsCount > 0)
@@ -49,11 +49,16 @@ export const ReviewsView: React.FC<ReviewsViewProps> = ({ entities, onViewDetail
   const communityRating = (slug: string) => {
     const brandReviews = reviews.filter((r) => r.brandSlug === slug);
     if (brandReviews.length === 0) return null;
-    const total = brandReviews.reduce(
+    const scored = brandReviews.filter((r) => r.starsSafety > 0);
+    const total = scored.reduce(
       (sum, r) => sum + (r.starsSafety + r.starsPayout + r.starsSupport + r.starsSpeed + r.starsResponsible) / 5,
       0
     );
-    return { avg: total / brandReviews.length, count: brandReviews.length, items: brandReviews };
+    return {
+      avg: scored.length ? total / scored.length : null,
+      count: brandReviews.length,
+      items: brandReviews,
+    };
   };
 
   return (
@@ -117,9 +122,10 @@ export const ReviewsView: React.FC<ReviewsViewProps> = ({ entities, onViewDetail
         {ratedEntities.map((entity) => {
           const rep = entity.reputation;
           const color = ratingColor(rep.reclameAquiScore);
-          const community = communityRating(entity.slug);
+          const brandSlug = entity.brandSlug || entity.slug;
+          const community = communityRating(brandSlug);
           const eligible = ELIGIBLE_FOR_RATING.includes(entity.status);
-          const expanded = expandedSlug === entity.slug;
+          const expanded = expandedSlug === brandSlug;
           return (
             <GlassCard key={entity.id} as="article" className="p-5 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b pb-3" style={{ borderColor: 'var(--color-card-border)' }}>
@@ -153,23 +159,26 @@ export const ReviewsView: React.FC<ReviewsViewProps> = ({ entities, onViewDetail
                     <Star className="w-4 h-4" style={{ color: 'var(--status-dado-declarado)', fill: 'var(--status-dado-declarado)' }} />
                     {community ? (
                       <span style={{ color: 'var(--color-text-primary)' }}>
-                        <strong className="font-mono">{community.avg.toFixed(1)}</strong> de 5 · {community.count} {community.count === 1 ? 'avaliação' : 'avaliações'} da comunidade
+                        {community.avg != null && <><strong className="font-mono">{community.avg.toFixed(1)}</strong> de 5 · </>}
+                        {community.count} {community.count === 1 ? 'comentário' : 'comentários'} da comunidade
                       </span>
                     ) : (
                       <span style={{ color: 'var(--color-text-tertiary)' }}>Ainda sem avaliações da comunidade</span>
                     )}
                   </div>
                   <div className="flex items-center gap-3">
-                    {community && community.count > 0 && (
-                      <button
-                        onClick={() => setExpandedSlug(expanded ? null : entity.slug)}
-                        className="text-xs font-semibold inline-flex items-center gap-1 cursor-pointer hover:underline"
-                        style={{ color: 'var(--color-text-secondary)' }}
-                      >
-                        {expanded ? 'Ocultar comentários' : 'Ver comentários'}
-                        {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                      </button>
-                    )}
+                    <button
+                      onClick={() => {
+                        const next = expanded ? null : brandSlug;
+                        setExpandedSlug(next);
+                        if (next) void loadBrand(next);
+                      }}
+                      className="text-xs font-semibold inline-flex items-center gap-1 cursor-pointer hover:underline"
+                      style={{ color: 'var(--color-text-secondary)' }}
+                    >
+                      {expanded ? 'Ocultar comentários' : 'Ver comentários'}
+                      {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
                     <button
                       onClick={() => handleRateClick(entity)}
                       className="px-3 py-1.5 text-xs font-semibold rounded cursor-pointer"
@@ -181,9 +190,12 @@ export const ReviewsView: React.FC<ReviewsViewProps> = ({ entities, onViewDetail
                 </div>
               )}
 
-              {eligible && expanded && community && (
+              {eligible && expanded && (
                 <div className="space-y-2">
-                  {community.items.map((r) => (
+                  {(community?.items || []).length === 0 && (
+                    <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Nenhum comentário publicado nesta marca.</p>
+                  )}
+                  {(community?.items || []).map((r) => (
                     <div key={r.id} className="p-3 rounded border text-xs" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'var(--color-card-border)' }}>
                       <div className="flex items-center justify-between gap-2">
                         <span style={{ color: 'var(--color-text-tertiary)' }}>{r.authorEmail} · {r.createdAt}</span>
@@ -262,8 +274,9 @@ export const ReviewsView: React.FC<ReviewsViewProps> = ({ entities, onViewDetail
           authorEmail={user.email}
           onClose={() => setRatingTarget(null)}
           onSubmit={(stars, comment) => {
-            addReview({
-              brandSlug: ratingTarget.slug,
+            const brandSlug = ratingTarget.brandSlug || ratingTarget.slug;
+            void addReview({
+              brandSlug,
               brand: ratingTarget.brandName,
               authorEmail: user.email,
               comment,
@@ -274,7 +287,7 @@ export const ReviewsView: React.FC<ReviewsViewProps> = ({ entities, onViewDetail
               starsResponsible: stars.responsible,
             });
             setRatingTarget(null);
-            setExpandedSlug(ratingTarget.slug);
+            setExpandedSlug(brandSlug);
           }}
         />
       )}
