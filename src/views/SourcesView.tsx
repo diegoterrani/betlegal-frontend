@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ShieldCheck, ExternalLink, Clock, History } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
+import { fetchPublicStats } from '../lib/realData';
 
 const WINDOWS = '4 vezes ao dia (00h, 06h, 12h e 18h, horário de Brasília)';
 
@@ -20,7 +21,7 @@ const SOURCES: Source[] = [
     url: 'https://www.gov.br/fazenda/pt-br/composicao/orgaos/secretaria-de-premios-e-apostas/transparencia-ativa-processos-de-autorizacao-de-apostas-de-quota-fixa/empresas-autorizadas',
     frequency: WINDOWS,
     docRef: 'Empresas autorizadas (Lei nº 14.790/2023). A planilha judicial entra na mesma conferência, com a data dela.',
-    lastChecked: 'Lista conferida hoje às 18h',
+    lastChecked: '',
   },
   {
     name: 'SPA/MF — autorizadas por decisão judicial',
@@ -28,7 +29,7 @@ const SOURCES: Source[] = [
     url: 'https://www.gov.br/fazenda/pt-br/composicao/orgaos/secretaria-de-premios-e-apostas/transparencia-ativa-processos-de-autorizacao-de-apostas-de-quota-fixa/autorizadas-por-determinacao-judicial',
     frequency: WINDOWS,
     docRef: 'Planilha de empresas autorizadas por determinação judicial.',
-    lastChecked: 'Lista conferida hoje às 18h',
+    lastChecked: '',
   },
   {
     name: 'Loterj (Rio de Janeiro)',
@@ -36,7 +37,7 @@ const SOURCES: Source[] = [
     url: 'https://www.loterj.rj.gov.br/licenciadas.php',
     frequency: WINDOWS,
     docRef: 'Lista de licenciadas publicada pela Loterj.',
-    lastChecked: 'Lista conferida hoje às 18h',
+    lastChecked: '',
   },
   {
     name: 'Lotep (Paraíba)',
@@ -44,7 +45,7 @@ const SOURCES: Source[] = [
     url: 'https://lotep.pb.gov.br/aposta-de-quota-fixa',
     frequency: WINDOWS,
     docRef: 'Operadores de aposta de quota fixa publicados pela Lotep.',
-    lastChecked: 'Lista conferida hoje às 18h',
+    lastChecked: '',
   },
   {
     name: 'Lottopar (Paraná)',
@@ -52,7 +53,7 @@ const SOURCES: Source[] = [
     url: 'https://www.lottopar.pr.gov.br/Pagina/Operadores-Autorizados-Aposta-de-Quota-Fixa',
     frequency: WINDOWS,
     docRef: 'Operadores autorizados publicados pela Lottopar.',
-    lastChecked: 'Lista conferida hoje às 18h',
+    lastChecked: '',
   },
   {
     name: 'Anatel',
@@ -68,11 +69,23 @@ const SOURCES: Source[] = [
     url: 'https://www.reclameaqui.com.br',
     frequency: `${WINDOWS}; o dado de cada marca é renovado quando passa de 6 horas`,
     docRef: 'Nota e número de reclamações das marcas autorizadas, exibidos separados da avaliação da comunidade.',
-    lastChecked: 'Última nota atualizada há 4 horas',
+    lastChecked: 'A nota de cada marca vem do BFF, separada da autorização.',
   },
 ];
 
 export const SourcesView: React.FC = () => {
+  const [checked, setChecked] = useState('A data da última coleta vem de /api/v1/stats.');
+
+  useEffect(() => {
+    fetchPublicStats()
+      .then((stats) => {
+        if (!stats.lastRunAt) return;
+        const when = new Date(stats.lastRunAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        setChecked(`Última coleta bem-sucedida em ${when}.`);
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 space-y-8">
       <div>
@@ -109,7 +122,7 @@ export const SourcesView: React.FC = () => {
                 </span>
                 <span className="flex items-start gap-1.5" style={{ color: 'var(--color-text-tertiary)' }} aria-live="polite">
                   <History className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
-                  <span>{src.lastChecked}</span>
+                  <span>{src.lastChecked || checked}</span>
                 </span>
               </div>
             </div>
