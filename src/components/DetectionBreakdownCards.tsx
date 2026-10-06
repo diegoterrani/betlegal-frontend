@@ -7,21 +7,17 @@ export const DetectionBreakdownCards: React.FC<{ stats: PublicStats | null }> = 
   const estadual = by.AUTORIZADA_ESTADUAL || 0;
   const judicial = by.DECISAO_JUDICIAL || 0;
   const authorizedTotal = nacional + estadual + judicial;
-  const unauthorizedTotal = (by.NAO_AUTORIZADA_DETECTADA || 0) + (by.BLOQUEADA_ANATEL || 0) + (by.SUSPENSA_REVOGADA || 0) + (by.INATIVA || 0);
   const detected = by.NAO_AUTORIZADA_DETECTADA || 0;
-  const blocked = by.BLOQUEADA_ANATEL || 0;
-  const inactive = by.INATIVA || 0;
-  const detectedPct = unauthorizedTotal > 0 ? (detected / unauthorizedTotal) * 100 : 0;
+  const reach = stats?.detectedReach || { active: 0, inactive: 0, unchecked: 0 };
 
   const livenessSegments = [
-    { label: 'Detectadas', value: detected, color: 'var(--live-fg)' },
-    { label: 'Bloqueadas', value: blocked, color: 'var(--color-text-secondary)' },
-    { label: 'Inativas', value: inactive, color: 'var(--color-text-tertiary)' },
+    { label: 'Online', detail: 'Página ainda respondendo.', value: reach.active, color: 'var(--live-fg)' },
+    { label: 'Fora do ar', detail: 'Última leitura conclusiva não encontrou a página.', value: reach.inactive, color: 'var(--color-text-secondary)' },
+    { label: 'Sem checagem', detail: 'Ainda não há leitura conclusiva de disponibilidade.', value: reach.unchecked, color: 'var(--color-text-tertiary)' },
   ];
 
   return (
     <div className="space-y-4">
-      {/* Headline pair */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div
           className="rounded border p-5"
@@ -47,7 +43,7 @@ export const DetectionBreakdownCards: React.FC<{ stats: PublicStats | null }> = 
           }}
         >
           <div className="font-mono text-4xl font-medium tracking-tight" style={{ color: 'var(--data-risco)' }}>
-            {unauthorizedTotal.toLocaleString('pt-BR')}
+            {detected.toLocaleString('pt-BR')}
           </div>
           <div className="text-sm font-semibold mt-1.5" style={{ color: 'var(--color-text-primary)' }}>Não autorizadas</div>
           <div className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
@@ -56,21 +52,20 @@ export const DetectionBreakdownCards: React.FC<{ stats: PublicStats | null }> = 
         </div>
       </div>
 
-      {/* Liveness breakdown — mesmo formato do antigo "Mercado agora" */}
       <div className="glass-card rounded p-6 sm:p-8">
         <div className="text-[11px] font-mono font-medium uppercase tracking-[0.2em]" style={{ color: 'var(--color-text-tertiary)' }}>
-          Das {unauthorizedTotal.toLocaleString('pt-BR')} fora da autorização vigente
+          Das {detected.toLocaleString('pt-BR')} detectadas
         </div>
         <h3 className="text-xl sm:text-2xl font-semibold mt-1" style={{ color: 'var(--color-text-primary)' }}>
-          <span style={{ color: 'var(--live-fg)' }}>{detectedPct.toFixed(0)}%</span> ainda estão só como detectadas, sem bloqueio publicado
+          Online, fora do ar e sem checagem somam o estoque do gráfico
         </h3>
         <p className="text-xs mt-1 mb-5" style={{ color: 'var(--color-text-tertiary)' }}>
-          Contagem do catálogo publicado. Detectadas, bloqueadas e inativas são situações diferentes.
+          {reach.active.toLocaleString('pt-BR')} + {reach.inactive.toLocaleString('pt-BR')} + {reach.unchecked.toLocaleString('pt-BR')} = {detected.toLocaleString('pt-BR')}. Bloqueadas e inativas não entram neste card.
         </p>
 
         <div className="h-3 rounded-full overflow-hidden flex" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
           {livenessSegments.map((seg) => (
-            <div key={seg.label} style={{ width: `${unauthorizedTotal ? (seg.value / unauthorizedTotal) * 100 : 0}%`, backgroundColor: seg.color }} title={seg.label} />
+            <div key={seg.label} style={{ width: `${detected ? (seg.value / detected) * 100 : 0}%`, backgroundColor: seg.color }} title={seg.label} />
           ))}
         </div>
 
@@ -83,6 +78,7 @@ export const DetectionBreakdownCards: React.FC<{ stats: PublicStats | null }> = 
                   {seg.value.toLocaleString('pt-BR')}
                 </div>
                 <div className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{seg.label}</div>
+                <div className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{seg.detail}</div>
               </div>
             </div>
           ))}
