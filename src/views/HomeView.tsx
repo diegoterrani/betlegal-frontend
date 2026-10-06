@@ -6,6 +6,7 @@ import { AmbientGlow } from '../components/ui/AmbientGlow';
 import { AuthorizationTrendChart } from '../components/AuthorizationTrendChart';
 import { DetectionBreakdownCards } from '../components/DetectionBreakdownCards';
 import { MarketGrowthChart } from '../components/MarketGrowthChart';
+import { PresenceChart } from '../components/PresenceChart';
 import { DatesNotice } from '../components/DatesNotice';
 import { BetLegalLogo } from '../components/brand/BetLegalBrand';
 import { useTheme } from '../context/ThemeContext';
@@ -172,6 +173,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
           ) : (
             <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>A série diária ainda não chegou.</p>
           )}
+        </div>
+
+        <div className="mt-4">
+          <PresenceChart />
         </div>
 
         <div className="mt-4">
