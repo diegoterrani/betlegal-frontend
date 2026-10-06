@@ -255,19 +255,36 @@ export async function fetchUnauthorizedReach(): Promise<UnauthorizedReach | null
   };
 }
 
+export interface DetectedReach {
+  active: number;
+  inactive: number;
+  unchecked: number;
+}
+
 export interface PublicStats {
   byStatus: Record<string, number>;
+  detectedReach: DetectedReach;
   jurisdiction: { state: string; count: number; pct: number }[];
   lastRunAt: string | null;
 }
 
 export async function fetchPublicStats(): Promise<PublicStats> {
   const data = await apiGet<{
-    stats?: { by_status?: Record<string, number>; last_successful_run?: { finished_at?: string } | null };
+    stats?: {
+      by_status?: Record<string, number>;
+      detected_reach?: Partial<DetectedReach>;
+      last_successful_run?: { finished_at?: string } | null;
+    };
     jurisdiction?: { state: string; count: number; pct: number }[];
   }>('/api/v1/stats');
+  const reach = data.stats?.detected_reach;
   return {
     byStatus: data.stats?.by_status || {},
+    detectedReach: {
+      active: Number(reach?.active || 0),
+      inactive: Number(reach?.inactive || 0),
+      unchecked: Number(reach?.unchecked || 0),
+    },
     jurisdiction: data.jurisdiction || [],
     lastRunAt: data.stats?.last_successful_run?.finished_at || null,
   };
