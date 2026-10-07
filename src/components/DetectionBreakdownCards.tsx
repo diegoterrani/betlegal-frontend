@@ -120,17 +120,17 @@ const AuthorizedCard: React.FC<{
         borderColor: `color-mix(in srgb, ${tone} 55%, transparent)`,
       }}
     >
-      <div className="flex items-stretch gap-4">
-        <div className="shrink-0">
-          <div className="font-mono text-4xl font-medium tracking-tight" style={{ color: tone }}>{fmt(value)}</div>
-          <div className="text-sm font-semibold mt-1.5" style={{ color: 'var(--color-text-primary)' }}>Autorizadas</div>
+      <div className="flex items-stretch">
+        <div className="shrink-0 pr-8 sm:pr-10">
+          <div className="font-mono text-5xl font-semibold tracking-tight leading-none" style={{ color: tone }}>{fmt(value)}</div>
+          <div className="text-base font-semibold mt-2" style={{ color: 'var(--color-text-primary)' }}>Autorizadas</div>
         </div>
         <div
           aria-hidden="true"
           className="w-px self-stretch"
           style={{ backgroundColor: `color-mix(in srgb, ${tone} 45%, transparent)` }}
         />
-        <ul className="min-w-0 flex-1 space-y-1">
+        <ul className="min-w-0 flex-1 space-y-1 pl-6 sm:pl-7">
           {REDIRECT_ROWS.map((row) => (
             <li key={row.key} className="flex items-baseline gap-2">
               <span className="w-8 shrink-0 text-right font-mono text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
