@@ -150,15 +150,15 @@ const AuthorizedCard: React.FC<{
 
 const Headline: React.FC<{ value: number; label: string; detail: string; tone: string }> = ({ value, label, detail, tone }) => (
   <div
-    className="rounded border p-5"
+    className="rounded border p-5 h-full flex flex-col items-center justify-center text-center"
     style={{
       backgroundColor: `color-mix(in srgb, ${tone} 18%, var(--color-surface))`,
       borderColor: `color-mix(in srgb, ${tone} 55%, transparent)`,
     }}
   >
-    <div className="font-mono text-4xl font-medium tracking-tight" style={{ color: tone }}>{fmt(value)}</div>
-    <div className="text-sm font-semibold mt-1.5" style={{ color: 'var(--color-text-primary)' }}>{label}</div>
-    <div className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>{detail}</div>
+    <div className="font-mono text-5xl font-semibold tracking-tight leading-none" style={{ color: tone }}>{fmt(value)}</div>
+    <div className="text-base font-semibold mt-2" style={{ color: 'var(--color-text-primary)' }}>{label}</div>
+    <div className="text-xs mt-2 max-w-xs" style={{ color: 'var(--color-text-secondary)' }}>{detail}</div>
   </div>
 );
 
