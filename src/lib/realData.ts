@@ -368,14 +368,22 @@ export interface NewsItem {
   url: string;
   image_url: string | null;
   published_at: string;
+  topic: string;
   topic_label: string;
-  source: { name: string; kind_label: string; paywall: boolean };
+  source: { slug: string; name: string; kind: string; kind_label: string; url: string; paywall?: boolean };
+  also_published_by: number;
 }
 
-export async function fetchNews(day?: string): Promise<{ news: NewsItem[]; days: { date: string; count: number }[] }> {
-  const qs = day ? `?day=${encodeURIComponent(day)}` : '';
-  const data = await apiGet<{ news?: NewsItem[]; days?: { date: string; count: number }[] }>(`/api/v1/news${qs}`);
-  return { news: data.news || [], days: data.days || [] };
+export interface NewsTopic { id: string; label: string }
+export interface NewsDay { date: string; count: number }
+
+export async function fetchNews(filters?: { topic?: string; day?: string }): Promise<{ news: NewsItem[]; topics: NewsTopic[]; days: NewsDay[] }> {
+  const params = new URLSearchParams();
+  if (filters?.topic) params.set('topic', filters.topic);
+  if (filters?.day) params.set('day', filters.day);
+  const qs = params.toString();
+  const data = await apiGet<{ news?: NewsItem[]; topics?: NewsTopic[]; days?: NewsDay[] }>(`/api/v1/news${qs ? `?${qs}` : ''}`);
+  return { news: data.news || [], topics: data.topics || [], days: data.days || [] };
 }
 
 export async function fetchDomainRecord(host: string): Promise<BetEntity | null> {
