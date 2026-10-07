@@ -2,11 +2,14 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { UserRole, UserSession } from '../types';
 import { apiGet, apiSend } from '../lib/http';
 
+export type Account = UserSession & { photo: string | null };
+
 interface UserContextType {
-  user: UserSession | null;
+  user: Account | null;
   ready: boolean;
-  login: (email: string, password: string) => Promise<UserSession>;
+  login: (email: string, password: string) => Promise<Account>;
   logout: () => Promise<void>;
+  saveProfile: (input: { name: string; photo: string | null }) => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -17,21 +20,22 @@ function asRole(value: string | undefined): UserRole {
   return ROLES.includes(value as UserRole) ? (value as UserRole) : 'client';
 }
 
-function toSession(raw: { email: string; name?: string; role?: string } | null | undefined): UserSession | null {
+function toSession(raw: { email: string; name?: string; role?: string; photo?: string | null } | null | undefined): Account | null {
   if (!raw?.email) return null;
   return {
     email: raw.email,
     name: raw.name || raw.email.split('@')[0] || raw.email,
     role: asRole(raw.role),
+    photo: raw.photo || null,
   };
 }
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserSession | null>(null);
+  const [user, setUser] = useState<Account | null>(null);
   const [ready, setReady] = useState(false);
 
   const refresh = async () => {
-    const data = await apiGet<{ user: { email: string; name?: string; role?: string } | null }>('/api/v1/session');
+    const data = await apiGet<{ user: { email: string; name?: string; role?: string; photo?: string | null } | null }>('/api/v1/session');
     setUser(toSession(data.user));
   };
 
@@ -47,13 +51,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => { cancelled = true; };
   }, []);
 
-  const login = async (email: string, password: string): Promise<UserSession> => {
+  const login = async (email: string, password: string): Promise<Account> => {
     await apiSend('/entrar/enviar', 'POST', { email, password, next: '/' });
-    const data = await apiGet<{ user: { email: string; name?: string; role?: string } | null }>('/api/v1/session');
+    const data = await apiGet<{ user: { email: string; name?: string; role?: string; photo?: string | null } | null }>('/api/v1/session');
     const session = toSession(data.user);
     if (!session) throw new Error('A sessão não foi aberta.');
     setUser(session);
     return session;
+  };
+
+  const saveProfile = async (input: { name: string; photo: string | null }) => {
+    await apiSend('/api/v1/profile', 'PATCH', { displayName: input.name, photo: input.photo });
+    setUser((current) => current ? { ...current, name: input.name.trim(), photo: input.photo } : current);
   };
 
   const logout = async () => {
@@ -66,7 +75,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <UserContext.Provider value={{ user, ready, login, logout }}>
+    <UserContext.Provider value={{ user, ready, login, logout, saveProfile }}>
       {children}
     </UserContext.Provider>
   );

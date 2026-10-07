@@ -6,6 +6,36 @@ import { useUser } from '../context/UserContext';
 import { UserRole } from '../types';
 import { apiGet } from '../lib/http';
 
+function readPhoto(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const url = URL.createObjectURL(file);
+    image.onload = () => {
+      const size = 160;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        URL.revokeObjectURL(url);
+        reject(new Error('Não lemos essa imagem.'));
+        return;
+      }
+      const scale = Math.max(size / image.width, size / image.height);
+      const width = image.width * scale;
+      const height = image.height * scale;
+      ctx.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Não lemos essa imagem.'));
+    };
+    image.src = url;
+  });
+}
+
 interface ProfileViewProps {
   onNavigate: (path: string) => void;
 }
@@ -33,15 +63,25 @@ const ROLE_LABEL: Record<UserRole, string> = {
 };
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
-  const { user } = useUser();
+  const { user, saveProfile } = useUser();
   const [profile, setProfile] = useState<ProfilePayload | null>(null);
   const [error, setError] = useState('');
+  const [name, setName] = useState(user?.name || '');
+  const [photo, setPhoto] = useState<string | null>(user?.photo || null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     apiGet<ProfilePayload>('/api/v1/profile')
       .then(setProfile)
       .catch((err: Error) => setError(err.message || 'O perfil não carregou.'));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    setName(user.name);
+    setPhoto(user.photo);
   }, [user]);
 
   if (!user) {
@@ -69,9 +109,85 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
 
       <div className="border-b pb-5" style={{ borderColor: 'var(--color-card-border)' }}>
         <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--status-dado-declarado)' }}>{ROLE_LABEL[user.role]}</p>
-        <h1 className="text-2xl font-semibold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>{user.name}</h1>
-        <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{user.email}</p>
+        <h1 className="text-2xl font-semibold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>Profile</h1>
       </div>
+
+      <GlassCard className="p-5">
+        <form
+          className="flex flex-col items-center text-center gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const next = name.trim();
+            if (next.length < 2) {
+              setError('O nome precisa de pelo menos 2 letras.');
+              return;
+            }
+            setSaving(true);
+            setSaved(false);
+            setError('');
+            saveProfile({ name: next, photo })
+              .then(() => setSaved(true))
+              .catch((err: Error) => setError(err.message || 'Não salvamos o perfil.'))
+              .finally(() => setSaving(false));
+          }}
+        >
+          <label className="cursor-pointer">
+            {photo ? (
+              <img src={photo} alt="" className="w-24 h-24 rounded-full object-cover" />
+            ) : (
+              <span
+                className="w-24 h-24 rounded-full flex items-center justify-center text-2xl font-semibold"
+                style={{ backgroundColor: 'var(--status-dado-declarado)', color: 'var(--color-bg)' }}
+              >
+                {(name || user.email).slice(0, 1).toUpperCase()}
+              </span>
+            )}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                readPhoto(file)
+                  .then((data) => { setPhoto(data); setSaved(false); })
+                  .catch((err: Error) => setError(err.message));
+              }}
+            />
+            <span className="block mt-2 text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Inserir foto</span>
+          </label>
+          <label className="w-full max-w-sm text-left space-y-1">
+            <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Nome</span>
+            <input
+              value={name}
+              onChange={(event) => { setName(event.target.value); setSaved(false); }}
+              maxLength={80}
+              className="w-full rounded border bg-transparent px-3 py-2 text-sm"
+              style={{ borderColor: 'var(--color-card-border)', color: 'var(--color-text-primary)' }}
+            />
+          </label>
+          <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{user.email}</p>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-4 py-2 text-sm font-semibold rounded cursor-pointer disabled:opacity-60"
+            style={{ backgroundColor: 'var(--status-dado-declarado)', color: 'var(--color-bg)' }}
+          >
+            {saving ? 'Salvando…' : 'Atualizar'}
+          </button>
+          {saved && <p className="text-xs" style={{ color: 'var(--status-autorizada)' }}>Perfil atualizado.</p>}
+          {photo && (
+            <button
+              type="button"
+              className="text-xs cursor-pointer"
+              style={{ color: 'var(--color-text-tertiary)' }}
+              onClick={() => { setPhoto(null); setSaved(false); }}
+            >
+              Remover foto
+            </button>
+          )}
+        </form>
+      </GlassCard>
 
       {error && <p role="alert" className="text-xs" style={{ color: 'var(--status-nao-autorizada)' }}>{error}</p>}
 

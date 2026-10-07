@@ -38,18 +38,30 @@ const MORE_LINKS = [
 export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate, onOpenQuickSearch }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { user, logout } = useUser();
   const moreRef = useRef<HTMLDivElement>(null);
+  const accountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
         setMoreOpen(false);
       }
+      if (accountRef.current && !accountRef.current.contains(e.target as Node)) {
+        setAccountOpen(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAccountOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKey);
+    };
   }, []);
 
   const isActive = (path: string) =>
@@ -59,6 +71,13 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate, onOpenQ
     onNavigate(path);
     setMobileMenuOpen(false);
     setMoreOpen(false);
+    setAccountOpen(false);
+  };
+
+  const leave = () => {
+    setAccountOpen(false);
+    logout();
+    handleNav('/');
   };
 
   return (
@@ -137,34 +156,50 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate, onOpenQ
 
           <ThemeToggle />
 
-          <div className="hidden sm:flex items-center gap-2">
+          <div className="flex items-center gap-2">
             {user ? (
-              <>
+              <div className="relative" ref={accountRef}>
                 <button
-                  onClick={() => handleNav('/perfil')}
-                  className="hidden md:flex items-center gap-2 cursor-pointer hover:opacity-80"
-                  title="Ver perfil"
+                  onClick={() => setAccountOpen((open) => !open)}
+                  className="flex items-center cursor-pointer rounded-full focus-visible:outline-none"
+                  aria-haspopup="menu"
+                  aria-expanded={accountOpen}
+                  aria-label="Abrir conta"
                 >
-                  <span
-                    className="text-xs font-mono px-2 py-1 rounded"
-                    style={{ color: 'var(--color-text-tertiary)', backgroundColor: 'rgba(255,255,255,0.05)' }}
+                  {user.photo ? (
+                    <img src={user.photo} alt="" className="w-8 h-8 rounded-full object-cover" />
+                  ) : (
+                    <span
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold"
+                      style={{ backgroundColor: 'var(--status-dado-declarado)', color: 'var(--color-bg)' }}
+                    >
+                      {(user.name || user.email).slice(0, 1).toUpperCase()}
+                    </span>
+                  )}
+                </button>
+                {accountOpen && (
+                  <div
+                    role="menu"
+                    className="glass-card absolute right-0 mt-2 w-56 rounded-lg p-1.5 shadow-lg"
+                    style={{ backgroundColor: 'var(--color-surface)' }}
                   >
-                    {ROLE_LABEL[user.role]}
-                  </span>
-                  <span className="hidden lg:inline text-xs font-medium truncate max-w-[10rem]" style={{ color: 'var(--color-text-secondary)' }}>
-                    {user.name}
-                  </span>
-                </button>
-                <button
-                  onClick={() => { logout(); handleNav('/'); }}
-                  className="px-3 py-2 text-xs sm:text-sm font-medium rounded-md transition-colors cursor-pointer hover:bg-white/5"
-                  style={{ color: 'var(--color-text-secondary)' }}
-                >
-                  Sair
-                </button>
-              </>
+                    <div className="px-3 py-2">
+                      <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text-primary)' }}>{user.name}</p>
+                      <p className="text-[11px] truncate" style={{ color: 'var(--color-text-tertiary)' }}>{ROLE_LABEL[user.role]}</p>
+                    </div>
+                    <button role="menuitem" onClick={() => handleNav('/perfil')} className="block w-full text-left px-3 py-2 text-sm rounded-md cursor-pointer hover:bg-white/5" style={{ color: 'var(--color-text-secondary)' }}>Profile</button>
+                    {user.role === 'super_admin' && (
+                      <button role="menuitem" onClick={() => handleNav('/painel')} className="block w-full text-left px-3 py-2 text-sm rounded-md cursor-pointer hover:bg-white/5" style={{ color: 'var(--color-text-secondary)' }}>Painel Geral</button>
+                    )}
+                    {(user.role === 'operator' || user.role === 'super_admin') && (
+                      <button role="menuitem" onClick={() => handleNav('/operadora')} className="block w-full text-left px-3 py-2 text-sm rounded-md cursor-pointer hover:bg-white/5" style={{ color: 'var(--color-text-secondary)' }}>Operador</button>
+                    )}
+                    <button role="menuitem" onClick={leave} className="block w-full text-left px-3 py-2 text-sm rounded-md cursor-pointer hover:bg-white/5" style={{ color: 'var(--color-text-secondary)', borderTop: '1px solid var(--color-card-border)' }}>Sair</button>
+                  </div>
+                )}
+              </div>
             ) : (
-              <>
+              <div className="hidden sm:flex items-center gap-2">
                 <button
                   onClick={() => handleNav('/entrar')}
                   className="px-3 py-2 text-xs sm:text-sm font-medium rounded-md transition-colors cursor-pointer hover:bg-white/5"
@@ -179,7 +214,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate, onOpenQ
                 >
                   Criar conta
                 </button>
-              </>
+              </div>
             )}
           </div>
 
@@ -210,62 +245,24 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate, onOpenQ
             </button>
           ))}
 
-          <div className="pt-2 mt-1 border-t space-y-1" style={{ borderColor: 'var(--color-card-border)' }}>
-            {user?.role === 'super_admin' && (
+          {!user && (
+            <div className="pt-2 mt-1 border-t space-y-1" style={{ borderColor: 'var(--color-card-border)' }}>
               <button
-                onClick={() => handleNav('/painel')}
-                className="block w-full text-left px-3 py-2 text-xs font-mono hover:bg-white/5 rounded-md"
-                style={{ color: 'var(--color-text-tertiary)' }}
+                onClick={() => handleNav('/entrar')}
+                className="block w-full text-left px-3 py-2 text-sm font-medium rounded-md hover:bg-white/5"
+                style={{ color: 'var(--color-text-secondary)' }}
               >
-                Área Operacional / Auditoria
+                Entrar
               </button>
-            )}
-            <button
-              onClick={() => handleNav('/operadora')}
-              className="block w-full text-left px-3 py-2 text-xs font-mono hover:bg-white/5 rounded-md"
-              style={{ color: 'var(--color-text-tertiary)' }}
-            >
-              Área da Operadora
-            </button>
-            {user ? (
-              <>
-                <div className="px-3 py-1.5 text-xs font-mono" style={{ color: 'var(--color-text-tertiary)' }}>
-                  {user.name} · {ROLE_LABEL[user.role]}
-                </div>
-                <button
-                  onClick={() => handleNav('/perfil')}
-                  className="block w-full text-left px-3 py-2 text-sm font-medium rounded-md hover:bg-white/5"
-                  style={{ color: 'var(--color-text-secondary)' }}
-                >
-                  Perfil
-                </button>
-                <button
-                  onClick={() => { logout(); handleNav('/'); }}
-                  className="block w-full text-left px-3 py-2 text-sm font-medium rounded-md hover:bg-white/5"
-                  style={{ color: 'var(--color-text-secondary)' }}
-                >
-                  Sair
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => handleNav('/entrar')}
-                  className="block w-full text-left px-3 py-2 text-sm font-medium rounded-md hover:bg-white/5"
-                  style={{ color: 'var(--color-text-secondary)' }}
-                >
-                  Entrar
-                </button>
-                <button
-                  onClick={() => handleNav('/criar-conta')}
-                  className="block w-full text-left px-3 py-2 text-sm font-semibold rounded-md"
-                  style={{ color: 'var(--status-dado-declarado)' }}
-                >
-                  Criar conta
-                </button>
-              </>
-            )}
-          </div>
+              <button
+                onClick={() => handleNav('/criar-conta')}
+                className="block w-full text-left px-3 py-2 text-sm font-semibold rounded-md"
+                style={{ color: 'var(--status-dado-declarado)' }}
+              >
+                Criar conta
+              </button>
+            </div>
+          )}
 
           <div className="pt-3 mt-2 border-t flex items-center justify-between px-3 py-2" style={{ borderColor: 'var(--color-card-border)' }}>
             <span className="text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>Modo de Exibição</span>
