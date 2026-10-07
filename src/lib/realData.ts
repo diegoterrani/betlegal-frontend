@@ -261,12 +261,44 @@ export interface DetectedReach {
   unchecked: number;
 }
 
+/** Destino técnico da última leitura de cada casa com autorização nacional ou estadual. */
+export interface AuthorizedRedirect {
+  oficial: number;
+  intermediaria: number;
+  outraPagina: number;
+  foraDoAr: number;
+  proprioSite: number;
+  checkedAt: string | null;
+}
+
 export interface PublicStats {
   byStatus: Record<string, number>;
   detectedReach: DetectedReach;
   offlineAfterProhibition: number;
   jurisdiction: { state: string; count: number; pct: number }[];
   lastRunAt: string | null;
+  authorizedRedirect: AuthorizedRedirect | null;
+}
+
+function toAuthorizedRedirect(raw: {
+  oficial?: number;
+  oficial_apos_intermediaria?: number;
+  outra_pagina?: number;
+  sem_resposta?: number;
+  proprio_site?: number;
+  checked_at?: string | null;
+} | null | undefined): AuthorizedRedirect | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const num = (value: unknown) => (Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : 0);
+  const at = typeof raw.checked_at === 'string' && raw.checked_at ? raw.checked_at : null;
+  return {
+    oficial: num(raw.oficial),
+    intermediaria: num(raw.oficial_apos_intermediaria),
+    outraPagina: num(raw.outra_pagina),
+    foraDoAr: num(raw.sem_resposta),
+    proprioSite: num(raw.proprio_site),
+    checkedAt: at,
+  };
 }
 
 export async function fetchPublicStats(): Promise<PublicStats> {
@@ -276,6 +308,14 @@ export async function fetchPublicStats(): Promise<PublicStats> {
       detected_reach?: Partial<DetectedReach>;
       offline_after_prohibition?: number;
       last_successful_run?: { finished_at?: string } | null;
+      authorized_redirect?: {
+        oficial?: number;
+        oficial_apos_intermediaria?: number;
+        outra_pagina?: number;
+        sem_resposta?: number;
+        proprio_site?: number;
+        checked_at?: string | null;
+      };
     };
     jurisdiction?: { state: string; count: number; pct: number }[];
   }>('/api/v1/stats');
@@ -290,6 +330,7 @@ export async function fetchPublicStats(): Promise<PublicStats> {
     offlineAfterProhibition: Number(data.stats?.offline_after_prohibition || 0),
     jurisdiction: data.jurisdiction || [],
     lastRunAt: data.stats?.last_successful_run?.finished_at || null,
+    authorizedRedirect: toAuthorizedRedirect(data.stats?.authorized_redirect),
   };
 }
 
