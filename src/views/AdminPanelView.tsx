@@ -10,7 +10,24 @@ interface AdminPanelViewProps {
   initialTab?: 'visao' | 'clones';
 }
 
-type Tab = 'visao' | 'contestacoes' | 'avaliacoes' | 'clones' | 'filas' | 'usuarios';
+type Tab = 'visao' | 'destino' | 'contestacoes' | 'avaliacoes' | 'clones' | 'filas' | 'usuarios';
+
+type RedirectOutcome = 'oficial' | 'oficial_apos_intermediaria' | 'outra_pagina' | 'sem_resposta' | 'proprio_site';
+
+interface RedirectHouse {
+  host: string;
+  outcome: RedirectOutcome;
+  final_host: string | null;
+  intermediate_host: string | null;
+  delay_ms: number | null;
+  error: string | null;
+}
+
+interface RedirectBoard {
+  checked_at: string | null;
+  counts: Record<RedirectOutcome, number>;
+  houses: RedirectHouse[];
+}
 
 interface Overview {
   kpis: {
@@ -116,8 +133,78 @@ const PanelStock: React.FC<{ kpis: Overview['kpis']; today?: Overview['today'] }
   );
 };
 
+const DESTINO_GROUPS: { outcome: RedirectOutcome; label: string }[] = [
+  { outcome: 'oficial', label: 'brasilsembets.gov.br' },
+  { outcome: 'oficial_apos_intermediaria', label: 'Site intermediário → brasilsembets.gov.br' },
+  { outcome: 'outra_pagina', label: 'Servem outra página' },
+  { outcome: 'sem_resposta', label: 'Estão fora do ar' },
+  { outcome: 'proprio_site', label: 'Continuam no próprio site' },
+];
+
+function destinoQuando(iso: string | null): string {
+  if (!iso) return 'Ainda sem leitura';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return 'Ainda sem leitura';
+  const clock = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date).replace(', ', ' às ');
+  return `Atualizado em ${clock}`;
+}
+
+function destinoOnde(house: RedirectHouse): string {
+  if (house.outcome === 'oficial') return house.final_host || 'brasilsembets.gov.br';
+  if (house.outcome === 'oficial_apos_intermediaria') {
+    const wait = house.delay_ms ? ` · ${Math.round(house.delay_ms / 1000)} s` : '';
+    return `${house.intermediate_host || 'página intermediária'} → ${house.final_host || 'brasilsembets.gov.br'}${wait}`;
+  }
+  if (house.outcome === 'sem_resposta') {
+    if (house.error?.includes('dns') || house.error === 'lookup_failed') return 'DNS sem resposta';
+    if (house.error?.includes('timeout')) return 'tempo esgotado';
+    if (house.error?.includes('conexao')) return 'sem conexão';
+    return 'sem página';
+  }
+  if (house.outcome === 'proprio_site') return 'próprio site';
+  return house.final_host || 'outro endereço';
+}
+
+const DestinoBoard: React.FC<{ board: RedirectBoard | null }> = ({ board }) => {
+  if (!board) return <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Lendo o destino dos sites…</p>;
+  return (
+    <div className="space-y-3">
+      <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
+        Leitura técnica de para onde o site de cada casa autorizada responde. {destinoQuando(board.checked_at)}. Não altera a classificação publicada.
+      </p>
+      {DESTINO_GROUPS.map((group) => {
+        const houses = board.houses.filter((house) => house.outcome === group.outcome);
+        return (
+          <GlassCard key={group.outcome} className="p-4 space-y-2">
+            <p className="text-sm" style={{ color: 'var(--color-text-primary)' }}>
+              <span className="font-mono">{fmt(board.counts[group.outcome] || 0)}</span>
+              <span className="ml-2">{group.label}</span>
+            </p>
+            <ul className="space-y-1">
+              {houses.map((house) => (
+                <li key={house.host} className="flex flex-wrap items-baseline gap-x-3 text-xs">
+                  <span className="font-mono" style={{ color: 'var(--color-text-primary)' }}>{house.host}</span>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>{destinoOnde(house)}</span>
+                </li>
+              ))}
+            </ul>
+          </GlassCard>
+        );
+      })}
+    </div>
+  );
+};
+
 const TABS: { id: Tab; label: string }[] = [
   { id: 'visao', label: 'Visão' },
+  { id: 'destino', label: 'Destino' },
   { id: 'contestacoes', label: 'Contestações' },
   { id: 'avaliacoes', label: 'Avaliações' },
   { id: 'clones', label: 'Clones' },
@@ -136,6 +223,7 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ onNavigate, init
   const [queues, setQueues] = useState<QueuePayload | null>(null);
   const [human, setHuman] = useState<HumanPayload | null>(null);
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [destino, setDestino] = useState<RedirectBoard | null>(null);
   const [note, setNote] = useState<Record<number, string>>({});
 
   const superAdmin = user?.role === 'super_admin';
@@ -146,6 +234,8 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ onNavigate, init
     const fail = (err: Error) => { if (!cancelled) setError(err.message); };
     if (tab === 'visao') {
       apiGet<Overview>('/api/v1/admin/overview').then((data) => { if (!cancelled) setOverview(data); }).catch(fail);
+    } else if (tab === 'destino') {
+      apiGet<RedirectBoard>('/api/v1/admin/shutdown-redirect').then((data) => { if (!cancelled) setDestino(data); }).catch(fail);
     } else if (tab === 'contestacoes') {
       apiGet<{ contests: Contest[] }>('/api/v1/admin/contests').then((data) => { if (!cancelled) setContests(data.contests || []); }).catch(fail);
     } else if (tab === 'avaliacoes') {
@@ -201,6 +291,8 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ onNavigate, init
       {tab === 'visao' && kpis && (
         <PanelStock kpis={kpis} today={overview?.today} />
       )}
+
+      {tab === 'destino' && <DestinoBoard board={destino} />}
 
       {tab === 'contestacoes' && contests.map((contest) => (
         <GlassCard key={contest.id} className="p-4 space-y-2 text-xs">
