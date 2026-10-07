@@ -120,12 +120,11 @@ const AuthorizedCard: React.FC<{
         borderColor: `color-mix(in srgb, ${tone} 55%, transparent)`,
       }}
     >
-      <div className="grid items-stretch" style={{ gridTemplateColumns: "auto minmax(0.75rem, 1fr) auto minmax(0, max-content)" }}>
-        <div className="shrink-0">
+      <div className="grid items-stretch" style={{ gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, max-content)" }}>
+        <div className="flex flex-col items-center justify-center text-center px-2">
           <div className="font-mono text-5xl font-semibold tracking-tight leading-none" style={{ color: tone }}>{fmt(value)}</div>
           <div className="text-base font-semibold mt-2" style={{ color: 'var(--color-text-primary)' }}>Autorizadas</div>
         </div>
-        <div aria-hidden="true" />
         <div
           aria-hidden="true"
           className="w-px self-stretch"
