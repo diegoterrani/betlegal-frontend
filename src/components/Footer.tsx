@@ -2,6 +2,7 @@ import React from 'react';
 import { ExternalLink, CheckCircle2 } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { BetLegalLogo } from './brand/BetLegalBrand';
+import { ironWatchMark } from '../assets/brand/ironWatchMark';
 import { useUser } from '../context/UserContext';
 
 interface FooterProps {
@@ -17,8 +18,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
     <footer className="pt-12 pb-8 mt-16 transition-colors" style={{ backgroundColor: '#0A0A0A', color: '#FFFFFF', borderTop: '1px solid rgba(255,255,255,0.14)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
+        {/* Top Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b" style={{ borderColor: 'rgba(255,255,255,0.14)' }}>
 
+          {/* Brand Col */}
           <div className="md:col-span-1 space-y-3">
             <BetLegalLogo theme="dark" variant="compact" className="h-7 w-auto" />
             <p className="text-xs font-semibold tracking-wide" style={linkStyle}>
@@ -34,8 +37,13 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </div>
               <div>Atualização contínua em 4 janelas diárias.</div>
             </div>
+            <div className="pt-2 flex items-center gap-2">
+              <span className="text-xs" style={linkStyle}>Aparência:</span>
+              <ThemeToggle compact />
+            </div>
           </div>
 
+          {/* Col 2: Consulta & Superfícies */}
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={headingStyle}>
               Consulta & Verificação
@@ -66,9 +74,15 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                   Séries Temporais do Mercado
                 </button>
               </li>
+              <li>
+                <button onClick={() => onNavigate('/avaliacoes')} className="hover:text-white transition-colors cursor-pointer text-left">
+                  Avaliações de Usuários
+                </button>
+              </li>
             </ul>
           </div>
 
+          {/* Col 3: Inteligência & Regulação */}
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={headingStyle}>
               Transparência & B2B
@@ -77,6 +91,16 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <li>
                 <button onClick={() => onNavigate('/metodologia')} className="hover:text-white transition-colors cursor-pointer text-left">
                   Metodologia e Fontes Oficiais
+                </button>
+              </li>
+              <li>
+                <button onClick={() => onNavigate('/sobre')} className="hover:text-white transition-colors cursor-pointer text-left">
+                  Sobre
+                </button>
+              </li>
+              <li>
+                <button onClick={() => onNavigate('/privacidade')} className="hover:text-white transition-colors cursor-pointer text-left">
+                  Privacidade
                 </button>
               </li>
               <li>
@@ -109,6 +133,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             </ul>
           </div>
 
+          {/* Col 4: Fontes Oficiais Integradas */}
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={headingStyle}>
               Fontes Públicas Primárias
@@ -167,36 +192,42 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        <div className="pt-6 pb-6 text-xs space-y-2" style={linkStyle}>
-          <div className="font-semibold" style={{ color: '#D4D4D4' }}>
-            Aviso de Transparência — Informação, não parecer jurídico
+        <div className="pt-8 text-xs space-y-4">
+          <div
+            className="flex flex-col sm:flex-row sm:items-center gap-4 leading-relaxed p-4 rounded-lg border"
+            style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.14)', color: 'rgba(226,226,224,0.78)' }}
+          >
+            <a href="https://iron-security.com" target="_blank" rel="noopener noreferrer" className="shrink-0 self-start">
+              <img src={ironWatchMark} alt="Iron Security" className="h-14 w-auto rounded-md bg-black" />
+            </a>
+            <p>
+              <strong className="block mb-1 font-medium" style={{ color: '#FFFFFF' }}>Aviso legal e de independência:</strong>
+              Criado pela{' '}
+              <a
+                href="https://iron-security.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-white"
+                style={{ color: '#FFFFFF' }}
+              >
+                Iron Security
+              </a>
+              , empresa de segurança cibernética. Consulta pública e gratuita sobre casas de apostas autorizadas e não autorizadas no Brasil. Sem comissão e sem indicação de aposta.
+            </p>
           </div>
-          <p className="leading-relaxed text-[11px] sm:text-xs" style={linkStyle}>
-            BetLegal é uma plataforma independente de informação baseada em fontes públicas e verificações
-            automatizadas com revisão humana quando aplicável. Em caso de divergência, prevalece a fonte oficial
-            (Diário Oficial da União, SPA/MF e órgãos reguladores competentes). A plataforma não recebe
-            comissão de operadores, não publica bônus e não recomenda onde apostar.
-          </p>
-        </div>
-
-        <div
-          className="pt-4 border-t flex flex-col sm:flex-row items-center justify-between text-[11px] gap-3"
-          style={{ borderColor: 'rgba(255,255,255,0.1)', color: '#737373' }}
-        >
-          <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
-            <span>BetLegal Brand System v1.0 • 22 de setembro de 2026 • Brasil</span>
-            <span aria-hidden="true">·</span>
-            <button onClick={() => onNavigate('/sobre')} className="hover:text-white transition-colors cursor-pointer">Sobre</button>
-            <span aria-hidden="true">·</span>
-            <button onClick={() => onNavigate('/privacidade')} className="hover:text-white transition-colors cursor-pointer">Privacidade</button>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="dark flex items-center gap-2">
-              <span className="text-xs" style={{ color: '#A3A3A3' }}>Tema:</span>
-              <ThemeToggle compact showLabels />
-            </div>
-            <div className="font-mono" style={{ color: '#A3A3A3' }}>
-              Consulte. Confira. Decida.
+          <div
+            className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2"
+            style={{ color: 'rgba(226,226,224,0.6)' }}
+          >
+            <span className="text-center sm:text-left">
+              Bet Legal © 2026 · “Bet legal? Confere.” · Horário oficial de Brasília (America/Sao_Paulo)
+            </span>
+            <div className="flex items-center gap-3 flex-wrap justify-center">
+              <span>Atualizações 4x ao dia</span>
+              <span aria-hidden="true">·</span>
+              <span>Zero comissões</span>
+              <span aria-hidden="true">·</span>
+              <span>Sem bônus</span>
             </div>
           </div>
         </div>
