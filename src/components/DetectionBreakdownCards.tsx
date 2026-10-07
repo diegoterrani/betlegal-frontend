@@ -27,12 +27,7 @@ export const DetectionBreakdownCards: React.FC<{ stats: PublicStats | null }> = 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Headline
-          value={authorizedTotal}
-          label="Autorizadas"
-          detail={`${fmt(nacional)} nacionais · ${fmt(estadual)} estaduais · ${fmt(judicial)} por decisão judicial`}
-          tone="var(--status-autorizada)"
-        />
+        <AuthorizedCard value={authorizedTotal} redirect={stats?.authorizedRedirect ?? null} />
         <Headline
           value={detected}
           label="Não autorizadas"
@@ -85,6 +80,70 @@ export const DetectionBreakdownCards: React.FC<{ stats: PublicStats | null }> = 
           tone="var(--data-estado)"
         />
       </div>
+    </div>
+  );
+};
+
+const REDIRECT_ROWS: Array<{ key: 'oficial' | 'intermediaria' | 'outraPagina' | 'foraDoAr' | 'proprioSite'; label: string }> = [
+  { key: 'oficial', label: 'brasilsembets.gov.br' },
+  { key: 'intermediaria', label: 'Site intermediário → brasilsembets.gov.br' },
+  { key: 'outraPagina', label: 'Servem outra página' },
+  { key: 'foraDoAr', label: 'Estão fora do ar' },
+  { key: 'proprioSite', label: 'Continuam no próprio site' },
+];
+
+function updatedLabel(iso: string | null): string {
+  if (!iso) return 'Ainda sem leitura';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return 'Ainda sem leitura';
+  const clock = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date).replace(', ', ' às ');
+  return `Atualizado em ${clock}`;
+}
+
+const AuthorizedCard: React.FC<{
+  value: number;
+  redirect: PublicStats['authorizedRedirect'] | null;
+}> = ({ value, redirect }) => {
+  const tone = 'var(--status-autorizada)';
+  return (
+    <div
+      className="rounded border p-5"
+      style={{
+        backgroundColor: `color-mix(in srgb, ${tone} 18%, var(--color-surface))`,
+        borderColor: `color-mix(in srgb, ${tone} 55%, transparent)`,
+      }}
+    >
+      <div className="flex items-stretch gap-4">
+        <div className="shrink-0">
+          <div className="font-mono text-4xl font-medium tracking-tight" style={{ color: tone }}>{fmt(value)}</div>
+          <div className="text-sm font-semibold mt-1.5" style={{ color: 'var(--color-text-primary)' }}>Autorizadas</div>
+        </div>
+        <div
+          aria-hidden="true"
+          className="w-px self-stretch"
+          style={{ backgroundColor: `color-mix(in srgb, ${tone} 45%, transparent)` }}
+        />
+        <ul className="min-w-0 flex-1 space-y-1">
+          {REDIRECT_ROWS.map((row) => (
+            <li key={row.key} className="flex items-baseline gap-2">
+              <span className="w-8 shrink-0 text-right font-mono text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+                {redirect ? fmt(redirect[row.key]) : '—'}
+              </span>
+              <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{row.label}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <p className="text-xs mt-3" style={{ color: 'var(--color-text-tertiary)' }}>
+        {updatedLabel(redirect?.checkedAt ?? null)}
+      </p>
     </div>
   );
 };
