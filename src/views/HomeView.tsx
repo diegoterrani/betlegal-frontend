@@ -5,7 +5,6 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { AmbientGlow } from '../components/ui/AmbientGlow';
 import { AuthorizationTrendChart } from '../components/AuthorizationTrendChart';
 import { DetectionBreakdownCards } from '../components/DetectionBreakdownCards';
-import { MarketGrowthChart } from '../components/MarketGrowthChart';
 import { PresenceChart } from '../components/PresenceChart';
 import { DatesNotice } from '../components/DatesNotice';
 import { BetLegalLogo } from '../components/brand/BetLegalBrand';
@@ -177,10 +176,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
         <div className="mt-4">
           <PresenceChart />
-        </div>
-
-        <div className="mt-4">
-          <MarketGrowthChart points={series} />
         </div>
       </section>
 
