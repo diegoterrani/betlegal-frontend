@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { AmbientGlow } from '../components/ui/AmbientGlow';
 import { CloneHouse, RegulatedClonesBoard } from '../components/RegulatedClonesBoard';
@@ -27,6 +27,7 @@ interface RedirectBoard {
   checked_at: string | null;
   counts: Record<RedirectOutcome, number>;
   houses: RedirectHouse[];
+  request?: { status: string; error: string | null } | null;
 }
 
 interface Overview {
@@ -134,12 +135,37 @@ const PanelStock: React.FC<{ kpis: Overview['kpis']; today?: Overview['today'] }
 };
 
 const DESTINO_GROUPS: { outcome: RedirectOutcome; label: string }[] = [
-  { outcome: 'oficial', label: 'brasilsembets.gov.br' },
-  { outcome: 'oficial_apos_intermediaria', label: 'Site intermediário → brasilsembets.gov.br' },
-  { outcome: 'outra_pagina', label: 'Servem outra página' },
-  { outcome: 'sem_resposta', label: 'Estão fora do ar' },
-  { outcome: 'proprio_site', label: 'Continuam no próprio site' },
+  { outcome: 'oficial', label: 'BRASILSEMBETS.GOV.BR' },
+  { outcome: 'oficial_apos_intermediaria', label: 'SITE INTERMEDIÁRIO → BRASILSEMBETS.GOV.BR' },
+  { outcome: 'outra_pagina', label: 'SERVEM OUTRA PÁGINA' },
+  { outcome: 'sem_resposta', label: 'ESTÃO FORA DO AR' },
+  { outcome: 'proprio_site', label: 'CONTINUAM NO PRÓPRIO SITE' },
 ];
+
+function HostLink({ host }: { host: string }) {
+  const clean = host.trim().toLowerCase();
+  if (!/^[a-z0-9.-]+$/.test(clean) || clean.includes('..')) {
+    return <span className="font-mono">{host}</span>;
+  }
+  return (
+    <a
+      href={`https://${clean}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="font-mono underline decoration-dotted underline-offset-2"
+      style={{ color: 'inherit' }}
+    >
+      {host}
+    </a>
+  );
+}
+
+function semRespostaTexto(error: string | null): string {
+  if (error?.includes('dns') || error === 'lookup_failed') return 'DNS sem resposta';
+  if (error?.includes('timeout')) return 'tempo esgotado';
+  if (error?.includes('conexao')) return 'sem conexão';
+  return 'sem página';
+}
 
 function destinoQuando(iso: string | null): string {
   if (!iso) return 'Ainda sem leitura';
@@ -156,45 +182,86 @@ function destinoQuando(iso: string | null): string {
   return `Atualizado em ${clock}`;
 }
 
-function destinoOnde(house: RedirectHouse): string {
-  if (house.outcome === 'oficial') return house.final_host || 'brasilsembets.gov.br';
+function DestinoOnde({ house }: { house: RedirectHouse }) {
+  if (house.outcome === 'oficial') return <HostLink host={house.final_host || 'brasilsembets.gov.br'} />;
   if (house.outcome === 'oficial_apos_intermediaria') {
     const wait = house.delay_ms ? ` · ${Math.round(house.delay_ms / 1000)} s` : '';
-    return `${house.intermediate_host || 'página intermediária'} → ${house.final_host || 'brasilsembets.gov.br'}${wait}`;
+    return (
+      <>
+        <HostLink host={house.intermediate_host || house.host} />
+        <span> → </span>
+        <HostLink host={house.final_host || 'brasilsembets.gov.br'} />
+        <span>{wait}</span>
+      </>
+    );
   }
-  if (house.outcome === 'sem_resposta') {
-    if (house.error?.includes('dns') || house.error === 'lookup_failed') return 'DNS sem resposta';
-    if (house.error?.includes('timeout')) return 'tempo esgotado';
-    if (house.error?.includes('conexao')) return 'sem conexão';
-    return 'sem página';
-  }
-  if (house.outcome === 'proprio_site') return 'próprio site';
-  return house.final_host || 'outro endereço';
+  if (house.outcome === 'sem_resposta') return <span>{semRespostaTexto(house.error)}</span>;
+  if (house.outcome === 'proprio_site') return <HostLink host={house.host} />;
+  return house.final_host ? <HostLink host={house.final_host} /> : <span>outro endereço</span>;
 }
 
-const DestinoBoard: React.FC<{ board: RedirectBoard | null }> = ({ board }) => {
+const DestinoBoard: React.FC<{ board: RedirectBoard | null; onRefresh: () => void; onError: (message: string) => void }> = ({ board, onRefresh, onError }) => {
+  const running = board?.request?.status === 'pending' || board?.request?.status === 'running';
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    if (!running) return;
+    const timer = setInterval(onRefresh, 4000);
+    return () => clearInterval(timer);
+  }, [running, onRefresh]);
+
   if (!board) return <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Lendo o destino dos sites…</p>;
+  const busy = sending || running;
   return (
-    <div className="space-y-3">
-      <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
-        Leitura técnica de para onde o site de cada casa autorizada responde. {destinoQuando(board.checked_at)}. Não altera a classificação publicada.
-      </p>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
+          Leitura técnica de para onde o site de cada casa autorizada responde. {destinoQuando(board.checked_at)}. Não altera a classificação publicada.
+        </p>
+        <button
+          type="button"
+          disabled={busy}
+          className="px-3 py-1.5 text-xs font-semibold rounded cursor-pointer disabled:opacity-60"
+          style={{ backgroundColor: 'var(--status-dado-declarado)', color: 'var(--color-bg)' }}
+          onClick={() => {
+            setSending(true);
+            apiSend('/api/v1/admin/shutdown-redirect', 'POST', {})
+              .then(() => onRefresh())
+              .catch((err: Error) => onError(err.message || 'A checagem não entrou na fila.'))
+              .finally(() => setSending(false));
+          }}
+        >
+          {busy ? 'Checando…' : 'Checar agora'}
+        </button>
+      </div>
+      {board.request?.status === 'error' && board.request.error && (
+        <p role="alert" className="text-xs" style={{ color: 'var(--status-nao-autorizada)' }}>{board.request.error}</p>
+      )}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        {DESTINO_GROUPS.map((group) => (
+          <GlassCard key={group.outcome} className="p-4">
+            <p className="font-mono text-2xl" style={{ color: 'var(--color-text-primary)' }}>{fmt(board.counts[group.outcome] || 0)}</p>
+            <p className="text-[11px] mt-1 leading-snug" style={{ color: 'var(--color-text-tertiary)' }}>{group.label}</p>
+          </GlassCard>
+        ))}
+      </div>
       {DESTINO_GROUPS.map((group) => {
         const houses = board.houses.filter((house) => house.outcome === group.outcome);
         return (
           <GlassCard key={group.outcome} className="p-4 space-y-2">
-            <p className="text-sm" style={{ color: 'var(--color-text-primary)' }}>
-              <span className="font-mono">{fmt(board.counts[group.outcome] || 0)}</span>
-              <span className="ml-2">{group.label}</span>
-            </p>
-            <ul className="space-y-1">
-              {houses.map((house) => (
-                <li key={house.host} className="flex flex-wrap items-baseline gap-x-3 text-xs">
-                  <span className="font-mono" style={{ color: 'var(--color-text-primary)' }}>{house.host}</span>
-                  <span style={{ color: 'var(--color-text-secondary)' }}>{destinoOnde(house)}</span>
-                </li>
-              ))}
-            </ul>
+            <p className="text-xs font-semibold tracking-wide" style={{ color: 'var(--color-text-primary)' }}>{group.label}</p>
+            {houses.length === 0 ? (
+              <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Nenhuma casa nesta leitura.</p>
+            ) : (
+              <ul className="space-y-1">
+                {houses.map((house) => (
+                  <li key={house.host} className="flex flex-wrap items-baseline gap-x-3 text-xs">
+                    <span style={{ color: 'var(--color-text-primary)' }}><HostLink host={house.host} /></span>
+                    <span style={{ color: 'var(--color-text-secondary)' }}><DestinoOnde house={house} /></span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </GlassCard>
         );
       })}
@@ -204,7 +271,7 @@ const DestinoBoard: React.FC<{ board: RedirectBoard | null }> = ({ board }) => {
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'visao', label: 'Visão' },
-  { id: 'destino', label: 'Destino' },
+  { id: 'destino', label: 'Redirecionamentos' },
   { id: 'contestacoes', label: 'Contestações' },
   { id: 'avaliacoes', label: 'Avaliações' },
   { id: 'clones', label: 'Clones' },
@@ -224,7 +291,9 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ onNavigate, init
   const [human, setHuman] = useState<HumanPayload | null>(null);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [destino, setDestino] = useState<RedirectBoard | null>(null);
+  const [destinoTick, setDestinoTick] = useState(0);
   const [note, setNote] = useState<Record<number, string>>({});
+  const refreshDestino = useCallback(() => setDestinoTick((n) => n + 1), []);
 
   const superAdmin = user?.role === 'super_admin';
 
@@ -257,7 +326,7 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ onNavigate, init
       apiGet<{ users: UserRow[] }>('/api/v1/admin/users').then((data) => { if (!cancelled) setUsers(data.users || []); }).catch(fail);
     }
     return () => { cancelled = true; };
-  }, [tab, ready, superAdmin, user?.role]);
+  }, [tab, ready, superAdmin, user?.role, destinoTick]);
 
   if (!ready) return null;
   if (!superAdmin) {
@@ -292,7 +361,7 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({ onNavigate, init
         <PanelStock kpis={kpis} today={overview?.today} />
       )}
 
-      {tab === 'destino' && <DestinoBoard board={destino} />}
+      {tab === 'destino' && <DestinoBoard board={destino} onRefresh={refreshDestino} onError={setError} />}
 
       {tab === 'contestacoes' && contests.map((contest) => (
         <GlassCard key={contest.id} className="p-4 space-y-2 text-xs">
