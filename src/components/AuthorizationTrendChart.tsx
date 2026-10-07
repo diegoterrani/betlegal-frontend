@@ -14,7 +14,7 @@ const PAD_LEFT = 40;
 const PAD_RIGHT = 8;
 const PAD_TOP = 34;
 const PAD_BOTTOM = 26;
-const AXIS_DATES = ['01/09', '07/09', '13/09', '19/09', '25/09', '02/10', '06/10'];
+const AXIS_DATES = ['01/09', '07/09', '13/09', '19/09', '25/09', '02/10', '05/10'];
 const MILESTONE_DATES = new Set(['2026-09-25', COMPULSORY_BLOCK_DAY]);
 
 const fmt = (n: number) => n.toLocaleString('pt-BR');
@@ -200,7 +200,7 @@ export const AuthorizationTrendChart: React.FC<AuthorizationTrendChartProps> = (
                 top={PAD_TOP}
                 baseline={baselineY}
                 side={prohibitionLabelSide(xScale(blockIndex), PAD_LEFT, width - PAD_RIGHT)}
-                label="00:01 · Bloqueio"
+                label="Bloqueio Geral"
                 caption={COMPULSORY_BLOCK_CAPTION}
               />
             )}
@@ -225,7 +225,7 @@ export const AuthorizationTrendChart: React.FC<AuthorizationTrendChartProps> = (
       </div>
       <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
         {annotation.description}{' '}
-        {blockIndex >= 0 && '06/10 às 00:01. Bloqueio compulsório de todas as casas regulamentadas. '}
+        {blockIndex >= 0 && '05/10. Bloqueio geral de todas as casas regulamentadas. '}
         Passe o cursor sobre o gráfico para ver outro dia.
       </p>
       <p
