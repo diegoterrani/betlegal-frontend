@@ -232,7 +232,7 @@ function Shell() {
   } else if (cleanPath === '/operadora') {
     view = <OperatorDeskView onNavigate={navigate} />;
   } else if (cleanPath === '/noticias') {
-    view = <NewsView />;
+    view = <NewsView onNavigate={navigate} />;
   } else if (cleanPath === '/entrar') {
     view = (
       <LoginView
