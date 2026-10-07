@@ -31,13 +31,13 @@ export const DetectionBreakdownCards: React.FC<{ stats: PublicStats | null }> = 
           value={authorizedTotal}
           label="Autorizadas"
           detail={`${fmt(nacional)} nacionais · ${fmt(estadual)} estaduais · ${fmt(judicial)} por decisão judicial`}
-          tone="var(--data-base)"
+          tone="var(--status-autorizada)"
         />
         <Headline
           value={detected}
           label="Não autorizadas"
           detail="Fora de qualquer lista oficial, desde a assinatura da MP."
-          tone="var(--data-risco)"
+          tone="var(--status-nao-autorizada)"
         />
       </div>
 
@@ -93,8 +93,8 @@ const Headline: React.FC<{ value: number; label: string; detail: string; tone: s
   <div
     className="rounded border p-5"
     style={{
-      backgroundColor: `color-mix(in srgb, ${tone} 10%, transparent)`,
-      borderColor: `color-mix(in srgb, ${tone} 30%, transparent)`,
+      backgroundColor: `color-mix(in srgb, ${tone} 18%, var(--color-surface))`,
+      borderColor: `color-mix(in srgb, ${tone} 55%, transparent)`,
     }}
   >
     <div className="font-mono text-4xl font-medium tracking-tight" style={{ color: tone }}>{fmt(value)}</div>
