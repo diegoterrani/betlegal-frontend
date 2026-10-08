@@ -113,6 +113,8 @@ const AuthorizedCard: React.FC<{
   redirect: PublicStats['authorizedRedirect'] | null;
 }> = ({ value, redirect }) => {
   const tone = 'var(--status-autorizada)';
+  const covered = redirect ? REDIRECT_ROWS.reduce((sum, row) => sum + redirect[row.key], 0) : null;
+  const foraLeitura = covered == null ? null : Math.max(0, value - covered);
   return (
     <div
       className="rounded border p-5"
@@ -134,12 +136,20 @@ const AuthorizedCard: React.FC<{
         <ul className="min-w-0 space-y-1 pl-4">
           {REDIRECT_ROWS.map((row) => (
             <li key={row.key} className="flex items-baseline gap-2">
-              <span className="w-8 shrink-0 text-right font-mono text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+              <span className="w-10 shrink-0 text-right font-mono text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
                 {redirect ? fmt(redirect[row.key]) : '—'}
               </span>
               <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{row.label}</span>
             </li>
           ))}
+          {foraLeitura != null && foraLeitura > 0 && (
+            <li className="flex items-baseline gap-2">
+              <span className="w-10 shrink-0 text-right font-mono text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+                {fmt(foraLeitura)}
+              </span>
+              <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Estadual ou decisão judicial</span>
+            </li>
+          )}
         </ul>
       </div>
       <p className="text-xs mt-3" style={{ color: 'var(--color-text-tertiary)' }}>
