@@ -147,7 +147,7 @@ const AuthorizedCard: React.FC<{
               <span className="w-10 shrink-0 text-right font-mono text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
                 {fmt(foraLeitura)}
               </span>
-              <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Estadual ou decisão judicial</span>
+              <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Ainda sem esta leitura</span>
             </li>
           )}
         </ul>
