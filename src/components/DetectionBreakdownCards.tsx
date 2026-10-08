@@ -84,11 +84,12 @@ export const DetectionBreakdownCards: React.FC<{ stats: PublicStats | null }> = 
   );
 };
 
-const REDIRECT_ROWS: Array<{ key: 'oficial' | 'intermediaria' | 'outraPagina' | 'foraDoAr' | 'proprioSite'; label: string }> = [
+const REDIRECT_ROWS: Array<{ key: 'oficial' | 'intermediaria' | 'outraPagina' | 'foraDoAr' | 'avisoBloqueio' | 'proprioSite'; label: string }> = [
   { key: 'oficial', label: 'brasilsembets.gov.br' },
   { key: 'intermediaria', label: 'Site intermediário → brasilsembets.gov.br' },
   { key: 'outraPagina', label: 'Servem outra página' },
   { key: 'foraDoAr', label: 'Estão fora do ar' },
+  { key: 'avisoBloqueio', label: 'Aviso de bloqueio no próprio site' },
   { key: 'proprioSite', label: 'Continuam no próprio site' },
 ];
 
