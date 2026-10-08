@@ -268,6 +268,7 @@ export interface AuthorizedRedirect {
   outraPagina: number;
   foraDoAr: number;
   proprioSite: number;
+  avisoBloqueio: number;
   checkedAt: string | null;
 }
 
@@ -286,6 +287,7 @@ function toAuthorizedRedirect(raw: {
   outra_pagina?: number;
   sem_resposta?: number;
   proprio_site?: number;
+  aviso_bloqueio?: number;
   checked_at?: string | null;
 } | null | undefined): AuthorizedRedirect | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -297,6 +299,7 @@ function toAuthorizedRedirect(raw: {
     outraPagina: num(raw.outra_pagina),
     foraDoAr: num(raw.sem_resposta),
     proprioSite: num(raw.proprio_site),
+    avisoBloqueio: num(raw.aviso_bloqueio),
     checkedAt: at,
   };
 }
@@ -314,6 +317,7 @@ export async function fetchPublicStats(): Promise<PublicStats> {
         outra_pagina?: number;
         sem_resposta?: number;
         proprio_site?: number;
+        aviso_bloqueio?: number;
         checked_at?: string | null;
       };
     };
