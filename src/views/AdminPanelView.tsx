@@ -12,7 +12,7 @@ interface AdminPanelViewProps {
 
 type Tab = 'visao' | 'destino' | 'contestacoes' | 'avaliacoes' | 'clones' | 'filas' | 'usuarios';
 
-type RedirectOutcome = 'oficial' | 'oficial_apos_intermediaria' | 'outra_pagina' | 'sem_resposta' | 'proprio_site';
+type RedirectOutcome = 'oficial' | 'oficial_apos_intermediaria' | 'outra_pagina' | 'sem_resposta' | 'aviso_bloqueio' | 'proprio_site';
 
 interface RedirectHouse {
   host: string;
@@ -23,10 +23,16 @@ interface RedirectHouse {
   error: string | null;
 }
 
+interface ForaLeitura {
+  host: string;
+  status: string;
+}
+
 interface RedirectBoard {
   checked_at: string | null;
   counts: Record<RedirectOutcome, number>;
   houses: RedirectHouse[];
+  fora_leitura?: ForaLeitura[];
   request?: { status: string; error: string | null } | null;
 }
 
@@ -139,6 +145,7 @@ const DESTINO_GROUPS: { outcome: RedirectOutcome; label: string }[] = [
   { outcome: 'oficial_apos_intermediaria', label: 'SITE INTERMEDIÁRIO → BRASILSEMBETS.GOV.BR' },
   { outcome: 'outra_pagina', label: 'SERVEM OUTRA PÁGINA' },
   { outcome: 'sem_resposta', label: 'ESTÃO FORA DO AR' },
+  { outcome: 'aviso_bloqueio', label: 'AVISO DE BLOQUEIO NO PRÓPRIO SITE' },
   { outcome: 'proprio_site', label: 'CONTINUAM NO PRÓPRIO SITE' },
 ];
 
@@ -196,6 +203,7 @@ function DestinoOnde({ house }: { house: RedirectHouse }) {
     );
   }
   if (house.outcome === 'sem_resposta') return <span>{semRespostaTexto(house.error)}</span>;
+  if (house.outcome === 'aviso_bloqueio') return <span>aviso de bloqueio</span>;
   if (house.outcome === 'proprio_site') return <HostLink host={house.host} />;
   return house.final_host ? <HostLink host={house.final_host} /> : <span>outro endereço</span>;
 }
@@ -237,13 +245,17 @@ const DestinoBoard: React.FC<{ board: RedirectBoard | null; onRefresh: () => voi
       {board.request?.status === 'error' && board.request.error && (
         <p role="alert" className="text-xs" style={{ color: 'var(--status-nao-autorizada)' }}>{board.request.error}</p>
       )}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         {DESTINO_GROUPS.map((group) => (
           <GlassCard key={group.outcome} className="p-4">
             <p className="font-mono text-2xl" style={{ color: 'var(--color-text-primary)' }}>{fmt(board.counts[group.outcome] || 0)}</p>
             <p className="text-[11px] mt-1 leading-snug" style={{ color: 'var(--color-text-tertiary)' }}>{group.label}</p>
           </GlassCard>
         ))}
+        <GlassCard className="p-4">
+          <p className="font-mono text-2xl" style={{ color: 'var(--color-text-primary)' }}>{fmt(board.fora_leitura?.length || 0)}</p>
+          <p className="text-[11px] mt-1 leading-snug" style={{ color: 'var(--color-text-tertiary)' }}>ESTADUAL OU DECISÃO JUDICIAL</p>
+        </GlassCard>
       </div>
       {DESTINO_GROUPS.map((group) => {
         const houses = board.houses.filter((house) => house.outcome === group.outcome);
@@ -265,6 +277,22 @@ const DestinoBoard: React.FC<{ board: RedirectBoard | null; onRefresh: () => voi
           </GlassCard>
         );
       })}
+      <GlassCard className="p-4 space-y-2">
+        <p className="text-xs font-semibold tracking-wide" style={{ color: 'var(--color-text-primary)' }}>ESTADUAL OU DECISÃO JUDICIAL</p>
+        <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Entram no total de autorizadas. Não entram na leitura de redirecionamento da MP.</p>
+        {(board.fora_leitura || []).length === 0 ? (
+          <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Nenhuma casa nesta leitura.</p>
+        ) : (
+          <ul className="space-y-1">
+            {(board.fora_leitura || []).map((house) => (
+              <li key={house.host} className="flex flex-wrap items-baseline gap-x-3 text-xs">
+                <span style={{ color: 'var(--color-text-primary)' }}><HostLink host={house.host} /></span>
+                <span style={{ color: 'var(--color-text-secondary)' }}>{house.status === 'DECISAO_JUDICIAL' ? 'decisão judicial' : 'estadual'}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </GlassCard>
     </div>
   );
 };
