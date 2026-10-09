@@ -375,39 +375,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </GlassCard>
       </section>
 
-      {/* 6. API E INTEGRAÇÃO B2B */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6">
-        <GlassCard className="p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="space-y-2 max-w-xl">
-            <div className="text-xs font-mono font-medium uppercase tracking-[0.2em]" style={{ color: 'var(--status-dado-declarado)' }}>
-              Para Jornalistas, Pesquisadores & Compliance
-            </div>
-            <h2 className="text-xl sm:text-2xl font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-              API Pública BetLegal: Dados Estruturados em Tempo Real
-            </h2>
-            <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-              Consulte endpoints REST padronizados para integrar verificações de domínio, CNPJ, listas de bloqueio da Anatel e histórico de alterações em sistemas de antifraude e redações.
-            </p>
-          </div>
-          <div className="shrink-0 flex flex-col sm:flex-row gap-3">
-            <button
-              onClick={() => onNavigate('/api')}
-              className="px-5 py-2.5 text-xs sm:text-sm font-semibold rounded transition-colors cursor-pointer"
-              style={{ backgroundColor: 'var(--status-dado-declarado)', color: 'var(--color-bg)' }}
-            >
-              Explorar Documentação da API
-            </button>
-            <button
-              onClick={() => onNavigate('/contestar')}
-              className="px-5 py-2.5 text-xs sm:text-sm font-semibold rounded border transition-colors cursor-pointer hover:bg-white/5"
-              style={{ borderColor: 'var(--color-card-border)', color: 'var(--color-text-secondary)' }}
-            >
-              Canal de Contestação
-            </button>
-          </div>
-        </GlassCard>
-      </section>
-
     </div>
   );
 };

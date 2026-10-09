@@ -109,11 +109,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('/api')} className="hover:text-white transition-colors cursor-pointer text-left">
-                  Documentação da API Pública
-                </button>
-              </li>
-              <li>
                 <button onClick={() => onNavigate('/contestar')} className="hover:text-white transition-colors cursor-pointer text-left">
                   Canal de Contestação e Denúncia
                 </button>

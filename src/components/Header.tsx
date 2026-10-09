@@ -31,7 +31,6 @@ const PRIMARY_LINKS = [
 const MORE_LINKS = [
   { label: 'Avaliações', path: '/avaliacoes' },
   { label: 'Como verificamos', path: '/metodologia' },
-  { label: 'API', path: '/api' },
   { label: 'Denunciar ou contestar', path: '/contestar' },
 ];
 

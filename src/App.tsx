@@ -21,7 +21,6 @@ import { SeriesView } from './views/SeriesView';
 import { ReviewsView } from './views/ReviewsView';
 import { MethodologyView } from './views/MethodologyView';
 import { ContestView } from './views/ContestView';
-import { ApiDocsView } from './views/ApiDocsView';
 import { AdminPanelView } from './views/AdminPanelView';
 import { OperatorDeskView } from './views/OperatorDeskView';
 import { NewsView } from './views/NewsView';
@@ -58,7 +57,7 @@ function queryOf(path: string): URLSearchParams {
 
 const KNOWN = new Set([
   '/', '/busca', '/autorizadas', '/radar', '/mudancas', '/series', '/avaliacoes',
-  '/metodologia', '/sobre', '/fontes', '/privacidade', '/contestar', '/api',
+  '/metodologia', '/sobre', '/fontes', '/privacidade', '/contestar',
   '/painel', '/painel/clones', '/operadora', '/noticias', '/entrar', '/criar-conta',
   '/perfil', '/confirmar',
 ]);
@@ -220,8 +219,6 @@ function Shell() {
     view = <PrivacyView />;
   } else if (cleanPath === '/contestar') {
     view = <ContestView initialHost={params.get('url') || ''} />;
-  } else if (cleanPath === '/api') {
-    view = <ApiDocsView entities={entities} />;
   } else if (cleanPath === '/painel' || cleanPath === '/painel/clones') {
     view = (
       <AdminPanelView

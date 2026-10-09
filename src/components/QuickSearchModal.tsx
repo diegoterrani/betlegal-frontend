@@ -128,7 +128,6 @@ export const QuickSearchModal: React.FC<QuickSearchModalProps> = ({
                   { label: 'Mudanças e Diffs Recentes', path: '/mudancas' },
                   { label: 'Séries Históricas do Mercado', path: '/series' },
                   { label: 'Metodologia e 4 Janelas', path: '/metodologia' },
-                  { label: 'API Pública de Consulta', path: '/api' },
                 ].map(r => (
                   <button
                     key={r.path}
