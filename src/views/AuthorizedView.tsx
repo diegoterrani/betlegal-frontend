@@ -3,6 +3,7 @@ import { BetEntity } from '../types';
 import { BetLegalCard } from '../components/BetLegalCard';
 import { GlassCard } from '../components/ui/GlassCard';
 import { AmbientGlow } from '../components/ui/AmbientGlow';
+import { LoterjLicenseBanner, LoterjLicenseModal, affectedByLoterjNotice } from '../components/LoterjLicenseNotice';
 import {
   CheckCircle2,
   Download,
@@ -29,12 +30,14 @@ export const AuthorizedView: React.FC<AuthorizedViewProps> = ({
   const [activeTab, setActiveTab] = useState<'all' | 'federal' | 'estadual' | 'judicial'>('all');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
   const [filterText, setFilterText] = useState('');
+  const [loterjOpen, setLoterjOpen] = useState(false);
 
   const authorizedEntities = entities.filter(e =>
     e.status === 'AUTORIZADA_NACIONAL' ||
     e.status === 'AUTORIZADA_ESTADUAL' ||
     e.status === 'DECISAO_JUDICIAL'
   );
+  const loterjDomains = authorizedEntities.filter(affectedByLoterjNotice).length;
 
   const displayedEntities = authorizedEntities.filter(e => {
     if (activeTab === 'federal' && e.sphere !== 'federal') return false;
@@ -107,6 +110,12 @@ export const AuthorizedView: React.FC<AuthorizedViewProps> = ({
           </GlassCard>
         </div>
       </div>
+
+      {loterjDomains > 0 && (
+        <LoterjLicenseBanner title="Licenças do Rio de Janeiro fora da lista oficial" onOpen={() => setLoterjOpen(true)}>
+          A Loterj não lista mais nenhuma empresa licenciada. {loterjDomains === 1 ? 'O domínio estadual do RJ abaixo mostra' : `Os ${loterjDomains} domínios estaduais do RJ abaixo mostram`} o último registro publicado.
+        </LoterjLicenseBanner>
+      )}
 
       {/* Composição */}
       <GlassCard className="p-5 sm:p-6">
@@ -289,6 +298,7 @@ export const AuthorizedView: React.FC<AuthorizedViewProps> = ({
         </p>
       </GlassCard>
 
+      {loterjOpen && <LoterjLicenseModal onClose={() => setLoterjOpen(false)} />}
     </div>
   );
 };
