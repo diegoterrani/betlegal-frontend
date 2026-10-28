@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { apiGet } from '../lib/http';
 import { GlassCard } from '../components/ui/GlassCard';
 import { AmbientGlow } from '../components/ui/AmbientGlow';
+import { LoterjLicenseBanner, LoterjLicenseModal } from '../components/LoterjLicenseNotice';
 
 interface BrandPayload {
   brand: { name: string; slug: string; operator: { legal_name: string; cnpj: string } | null };
-  domains: { host: string; status_label?: string; status?: string }[];
+  domains: { host: string; status_label?: string; status?: string; authorization?: { kind?: string; uf?: string | null } | null }[];
   unauthorized_domains: { host: string; status_label?: string }[];
 }
 
@@ -20,6 +21,13 @@ export const BrandView: React.FC<{ slug: string; onNavigate: (path: string) => v
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState('');
+  const [loterjOpen, setLoterjOpen] = useState(false);
+  const loterjAffected = Boolean(brand?.domains.some((domain) => domain.authorization?.kind === 'ESTADUAL' && domain.authorization?.uf === 'RJ'));
+
+  // Abre sozinho a cada ficha do RJ; a faixa no topo reabre.
+  useEffect(() => {
+    if (loterjAffected) setLoterjOpen(true);
+  }, [slug, loterjAffected]);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,6 +65,11 @@ export const BrandView: React.FC<{ slug: string; onNavigate: (path: string) => v
               </p>
             )}
           </div>
+          {loterjAffected && (
+            <LoterjLicenseBanner title="Licença estadual fora da lista da Loterj" onOpen={() => setLoterjOpen(true)}>
+              A página oficial da Loterj não lista mais nenhuma empresa licenciada no Rio de Janeiro.
+            </LoterjLicenseBanner>
+          )}
           <GlassCard className="p-5 space-y-2">
             <h2 className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>Domínios autorizados</h2>
             {brand.domains.length === 0 && <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Nenhum domínio autorizado publicado.</p>}
@@ -89,6 +102,7 @@ export const BrandView: React.FC<{ slug: string; onNavigate: (path: string) => v
           </GlassCard>
         </>
       )}
+      {loterjOpen && brand && <LoterjLicenseModal brandName={brand.brand.name} onClose={() => setLoterjOpen(false)} />}
     </div>
   );
 };
